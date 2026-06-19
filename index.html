@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Site Desk — Procore Assistant</title>
+<style>
+  :root {
+    --bg: #e9ecef;
+    --surface: #ffffff;
+    --ink: #1b1e24;
+    --muted: #5a626b;
+    --line: #d6dadf;
+    --amber: #f4a300;
+    --amber-ink: #5c3d00;
+    --steel: #295c82;
+    --steel-soft: #eaf1f6;
+    --slate: #1b1e24;
+    --danger: #b3261e;
+    --radius: 12px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 760px;
+    margin: 0 auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+
+  /* Header — hi-vis: dark slate with an amber stripe */
+  header {
+    background: var(--slate);
+    color: #fff;
+    border-top: 4px solid var(--amber);
+    padding: 16px 18px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .brand h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -0.2px; }
+  .brand .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+  header p { margin: 4px 0 0; font-size: 13px; color: #b9bec6; }
+
+  /* Quick categories */
+  .chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 12px 18px 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chips::-webkit-scrollbar { height: 0; }
+  .chip {
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 7px 13px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .12s, background .12s;
+  }
+  .chip:hover, .chip:focus-visible { border-color: var(--amber); background: #fffaf0; outline: none; }
+
+  /* Chat */
+  .chat { flex: 1; padding: 14px 18px 6px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 86%; padding: 11px 14px; border-radius: var(--radius); font-size: 15px; }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--steel);
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--slate);
+    color: #fff;
+  }
+  .msg.error {
+    align-self: flex-start;
+    background: #fdeceb;
+    border: 1px solid #f3c6c3;
+    color: var(--danger);
+  }
+  .msg p { margin: 0 0 8px; }
+  .msg p:last-child { margin-bottom: 0; }
+  .msg code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: rgba(0,0,0,.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .msg.user code { background: rgba(255,255,255,.18); }
+  .who {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .typing { display: inline-flex; gap: 4px; align-items: center; }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--steel);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* Composer */
+  .composer {
+    position: sticky; bottom: 0;
+    background: var(--bg);
+    padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 12px;
+    font: inherit;
+    font-size: 15px;
+    max-height: 140px;
+    background: var(--surface);
+  }
+  textarea:focus-visible { outline: 2px solid var(--steel); outline-offset: 1px; }
+  button.send {
+    border: none;
+    background: var(--slate);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 18px;
+    height: 44px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.send:disabled { opacity: .5; cursor: default; }
+
+  /* Live-session bar */
+  .booking {
+    padding: 0 18px 10px;
+  }
+  button.book {
+    width: 100%;
+    border: none;
+    background: var(--amber);
+    color: var(--amber-ink);
+    font-weight: 700;
+    font-size: 15px;
+    border-radius: 10px;
+    padding: 13px;
+    cursor: pointer;
+    letter-spacing: .2px;
+  }
+  button.book:hover { background: #ffb521; }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 18px 16px;
+  }
+
+  /* Modal */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,22,27,.55);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    background: var(--surface);
+    width: 100%;
+    max-width: 760px;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  @media (min-width: 640px) {
+    .overlay { align-items: center; }
+    .sheet { border-radius: 16px; }
+  }
+  .sheet h2 { margin: 0 0 2px; font-size: 18px; }
+  .sheet .sub { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 11px; font: inherit; font-size: 15px; background: #fff;
+  }
+  .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible {
+    outline: 2px solid var(--steel); outline-offset: 1px;
+  }
+  .row { display: flex; gap: 10px; }
+  .row .field { flex: 1; }
+  .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .actions button { flex: 1; border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .btn-primary { border: none; background: var(--amber); color: var(--amber-ink); }
+  .btn-ghost { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .ok-note {
+    background: var(--steel-soft); border: 1px solid #cfe0ec; color: var(--steel);
+    border-radius: 10px; padding: 12px; font-size: 14px; margin-top: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Site Desk</h1>
+      <span class="tag">Procore helper</span>
+    </div>
+    <p>Quick answers on Procore — safety, project management and daily tools. Need a person? Book time with <span id="agentName">the site agent</span>.</p>
+  </header>
+
+  <div class="chips" id="chips" aria-label="Common topics"></div>
+
+  <div class="chat" id="chat" aria-live="polite"></div>
+
+  <div class="booking">
+    <button class="book" id="openBooking">Request a live session</button>
+  </div>
+
+  <div class="composer">
+    <textarea id="input" rows="1" placeholder="Ask about RFIs, the daily log, drawings, inspections…" aria-label="Your question"></textarea>
+    <button class="send" id="send">Send</button>
+  </div>
+
+  <footer>Unofficial team tool. Not affiliated with Procore. Menus may differ by your account and permissions.</footer>
+</div>
+
+<!-- Live session modal -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="bookTitle">
+  <div class="sheet">
+    <div id="bookForm">
+      <h2 id="bookTitle">Request a live session</h2>
+      <p class="sub">Tell <span class="agentName2">the site agent</span> what you need and they'll set up a time.</p>
+      <div class="field">
+        <label for="f-name">Your name</label>
+        <input id="f-name" type="text" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="f-contact">Contact (email or phone)</label>
+        <input id="f-contact" type="text" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="f-topic">What's it about?</label>
+        <input id="f-topic" type="text" placeholder="e.g. setting up submittal workflow" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="f-time">Preferred time</label>
+          <input id="f-time" type="text" placeholder="e.g. tomorrow AM" />
+        </div>
+        <div class="field">
+          <label for="f-urgency">Urgency</label>
+          <select id="f-urgency">
+            <option>Whenever</option>
+            <option>This week</option>
+            <option>Today</option>
+            <option>Urgent</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-details">Details (optional)</label>
+        <textarea id="f-details" rows="3" placeholder="Anything that helps them prepare"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" id="cancelBooking">Cancel</button>
+        <button class="btn-primary" id="submitBooking">Send request</button>
+      </div>
+    </div>
+    <div id="bookDone" style="display:none">
+      <h2>Request sent</h2>
+      <p class="sub">Your request is logged for <span class="agentName2">the site agent</span>.</p>
+      <div class="ok-note" id="doneNote"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn-primary" id="closeDone">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CATEGORIES = [
+    ["Daily Log", "How do I fill in the daily log on the Procore mobile app?"],
+    ["RFIs", "How do I create and submit an RFI in Procore?"],
+    ["Submittals", "How do I respond to a submittal assigned to me?"],
+    ["Drawings", "How do I find the latest revision of a drawing and mark it up?"],
+    ["Inspections", "How do I complete an inspection in Procore?"],
+    ["Observations", "How do I raise a safety observation?"],
+    ["Incidents", "How do I report an incident in Procore?"],
+    ["Punch List", "How do I add and assign a punch list item?"],
+    ["Photos", "How do I upload site photos and link them to a location?"],
+    ["Schedule", "How do I view the project schedule and my tasks?"],
+  ];
+
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const chipsEl = document.getElementById("chips");
+  let history = [];
+  let busy = false;
+
+  // load agent name
+  fetch("/api/config").then(r => r.json()).then(d => {
+    if (d && d.agent) {
+      document.getElementById("agentName").textContent = d.agent;
+      document.querySelectorAll(".agentName2").forEach(e => e.textContent = d.agent);
+    }
+  }).catch(() => {});
+
+  // build chips
+  CATEGORIES.forEach(([label, q]) => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = label;
+    b.onclick = () => { input.value = q; input.focus(); autoGrow(); };
+    chipsEl.appendChild(b);
+  });
+
+  // greeting
+  addBot("Hi — I'm the site's Procore helper. Ask me how to do something in Procore, or tap a topic above. If you'd rather talk it through, hit \u201CRequest a live session\u201D and I'll get you booked in.");
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+  // minimal, safe formatting: escape first, then bold / code / line breaks
+  function format(text) {
+    let t = escapeHtml(text);
+    t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    const paras = t.split(/\n{2,}/).map(p => "<p>" + p.replace(/\n/g, "<br>") + "</p>");
+    return paras.join("");
+  }
+
+  function addBot(text) {
+    const el = document.createElement("div");
+    el.className = "msg bot";
+    el.innerHTML = '<div class="who">Site Desk</div>' + format(text);
+    chat.appendChild(el);
+    scroll();
+  }
+  function addUser(text) {
+    const el = document.createElement("div");
+    el.className = "msg user";
+    el.textContent = text;
+    chat.appendChild(el);
+    scroll();
+  }
+  function addError(text) {
+    const el = document.createElement("div");
+    el.className = "msg error";
+    el.textContent = text;
+    chat.appendChild(el);
+    scroll();
+  }
+  function scroll() { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }
+
+  function showTyping() {
+    const el = document.createElement("div");
+    el.className = "msg bot";
+    el.id = "typing";
+    el.innerHTML = '<div class="who">Site Desk</div><div class="typing"><span></span><span></span><span></span></div>';
+    chat.appendChild(el);
+    scroll();
+  }
+  function hideTyping() { const t = document.getElementById("typing"); if (t) t.remove(); }
+
+  async function ask(text) {
+    if (busy || !text.trim()) return;
+    busy = true; sendBtn.disabled = true;
+    addUser(text);
+    history.push({ role: "user", content: text });
+    input.value = ""; autoGrow();
+    showTyping();
+    try {
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history }),
+      });
+      const d = await r.json();
+      hideTyping();
+      if (!r.ok) { addError(d.error || "Something went wrong. Try again."); }
+      else { addBot(d.reply); history.push({ role: "assistant", content: d.reply }); }
+    } catch {
+      hideTyping();
+      addError("Couldn't reach the assistant. Check your connection and try again.");
+    } finally {
+      busy = false; sendBtn.disabled = false;
+    }
+  }
+
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 140) + "px";
+  }
+  input.addEventListener("input", autoGrow);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+  });
+  sendBtn.onclick = () => ask(input.value);
+
+  // ---- modal ----
+  const overlay = document.getElementById("overlay");
+  document.getElementById("openBooking").onclick = () => {
+    document.getElementById("bookForm").style.display = "block";
+    document.getElementById("bookDone").style.display = "none";
+    overlay.classList.add("open");
+    document.getElementById("f-name").focus();
+  };
+  function closeModal() { overlay.classList.remove("open"); }
+  document.getElementById("cancelBooking").onclick = closeModal;
+  document.getElementById("closeDone").onclick = closeModal;
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+
+  document.getElementById("submitBooking").onclick = async () => {
+    const payload = {
+      name: document.getElementById("f-name").value,
+      contact: document.getElementById("f-contact").value,
+      topic: document.getElementById("f-topic").value,
+      preferredTime: document.getElementById("f-time").value,
+      urgency: document.getElementById("f-urgency").value,
+      details: document.getElementById("f-details").value,
+    };
+    if (!payload.name.trim()) { document.getElementById("f-name").focus(); return; }
+    const btn = document.getElementById("submitBooking");
+    btn.disabled = true; btn.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/request-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "failed");
+      const note = document.getElementById("doneNote");
+      note.textContent = d.agentEmail
+        ? "You can also reach " + d.agent + " directly at " + d.agentEmail + "."
+        : d.agent + " will follow up with a time.";
+      document.getElementById("bookForm").style.display = "none";
+      document.getElementById("bookDone").style.display = "block";
+    } catch (e) {
+      alert("Couldn't send the request. Please tell the site office directly.");
+    } finally {
+      btn.disabled = false; btn.textContent = "Send request";
+    }
+  };
+</script>
+</body>
+</html>

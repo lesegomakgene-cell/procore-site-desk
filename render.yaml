@@ -1,0 +1,18 @@
+# Render Blueprint - pre-fills the service settings when you deploy.
+# Free web service: sleeps after 15 min idle, ~30-60s to wake. No card needed.
+services:
+  - type: web
+    name: procore-site-desk
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # Render will prompt you to paste this (kept secret)
+      - key: SITE_AGENT_NAME
+        value: Lesego
+      - key: MODEL
+        value: claude-sonnet-4-6
+      - key: REQUEST_WEBHOOK_URL
+        sync: false          # optional - a Slack/Discord webhook to get pinged on requests
