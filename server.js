@@ -35,6 +35,9 @@ const MODEL = process.env.MODEL || "claude-sonnet-4-6";
 const SITE_AGENT_NAME = process.env.SITE_AGENT_NAME || "the site agent";
 const SITE_AGENT_EMAIL = process.env.SITE_AGENT_EMAIL || "";
 const REQUEST_WEBHOOK_URL = process.env.REQUEST_WEBHOOK_URL || "";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL || SITE_AGENT_EMAIL || "";
+const EMAIL_FROM = process.env.EMAIL_FROM || "Procore Site Desk <onboarding@resend.dev>";
 const REQUESTS_FILE = path.join(__dirname, "session-requests.jsonl");
 
 // --- the assistant's brief ----------------------------------------------
@@ -174,19 +177,50 @@ async function handleChat(req, res) {
   }
 }
 
-// --- notify the site agent instantly (Slack/Discord/generic webhook) -----
-// Free hosts wipe the local file on redeploy, so this is how requests
-// actually reach you. Set REQUEST_WEBHOOK_URL to a Slack or Discord webhook.
-async function notifyWebhook(rec) {
-  if (!REQUEST_WEBHOOK_URL) return;
-  const text =
+// --- build a readable summary of a request --------------------------------
+function summarise(rec) {
+  return (
     "New Procore live-session request\n" +
     `Name: ${rec.name}\n` +
     `Contact: ${rec.contact || "-"}\n` +
     `Topic: ${rec.topic || "-"}\n` +
     `Preferred: ${rec.preferredTime || "-"}\n` +
     `Urgency: ${rec.urgency || "-"}\n` +
-    `Details: ${rec.details || "-"}`;
+    `Details: ${rec.details || "-"}`
+  );
+}
+
+// --- email the site agent (via Resend) ------------------------------------
+// Set RESEND_API_KEY and NOTIFY_EMAIL to turn this on. With no verified
+// domain, send to your own email (the address you signed up to Resend with).
+async function sendEmail(rec) {
+  if (!RESEND_API_KEY || !NOTIFY_EMAIL) return;
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + RESEND_API_KEY,
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: NOTIFY_EMAIL,
+        subject: `Procore Site Desk: live session request from ${rec.name}`,
+        text: summarise(rec),
+      }),
+    });
+    if (!r.ok) console.error("Resend error:", r.status, await r.text());
+  } catch (e) {
+    console.error("Email notify failed:", e.message);
+  }
+}
+
+// --- notify the site agent instantly (Slack/Discord/generic webhook) -----
+// Free hosts wipe the local file on redeploy, so this is how requests
+// actually reach you. Set REQUEST_WEBHOOK_URL to a Slack or Discord webhook.
+async function notifyWebhook(rec) {
+  if (!REQUEST_WEBHOOK_URL) return;
+  const text = summarise(rec);
   const isDiscord = REQUEST_WEBHOOK_URL.includes("discord");
   const body = isDiscord ? { content: text } : { text };
   try {
@@ -232,6 +266,7 @@ async function handleSessionRequest(req, res) {
   console.log(`    Topic: ${record.topic || "-"}  |  Preferred: ${record.preferredTime || "-"}`);
 
   notifyWebhook(record).catch(() => {});
+  sendEmail(record).catch(() => {});
 
   return send(res, 200, {
     ok: true,
