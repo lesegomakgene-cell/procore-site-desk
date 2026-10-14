@@ -10,6 +10,10 @@ they can request a live session, which gets logged for the site agent.
 - Mobile-first UI, built for phones on site
 - Live-session requests saved to a local file
 
+> **Also in this repo:** [InstantSiteMail](instantsitemail/README.md) is a
+> standalone app. Drop in a saved Outlook email with its drawings and get a
+> contracts-manager analysis and a reply ready to send.
+
 ---
 
 ## Setup (about 2 minutes)

@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>InstantSiteMail</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23f0801a'/><path d='M7 10h18v12H7z' fill='none' stroke='white' stroke-width='2.4'/><path d='M7 10l9 7 9-7' fill='none' stroke='white' stroke-width='2.4'/></svg>" />
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #1b2330; --muted: #5d6878; --line: #dde1e7;
+    --accent: #e8730c; --accent-ink: #ffffff; --accent-soft: #fff1e4;
+    --navy: #1d2b3f; --ok: #1f7a4d; --warn: #b26a00; --bad: #b42318; --chip: #eef1f5;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10151d; --panel: #18202b; --ink: #e7ebf0; --muted: #9aa6b5; --line: #2a3442;
+      --accent: #f08a2c; --accent-ink: #10151d; --accent-soft: #2e2216;
+      --navy: #0c121a; --ok: #46b37f; --warn: #e2a33d; --bad: #f0645a; --chip: #232d3a;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { background: var(--navy); color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header h1 span { color: var(--accent); }
+  header .tag { color: #b8c3d1; font-size: 13px; }
+  header .spacer { flex: 1; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 7px 12px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: transparent; color: #fff; border-color: #3a4a60; }
+  button.small { padding: 4px 9px; font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 18px; padding: 18px; max-width: 1500px; margin: 0 auto; }
+  main > section { min-width: 0; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px; } }
+  @media (max-width: 640px) { header .tag { display: none; } header { padding: 10px 14px; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+  .panel + .panel { margin-top: 14px; }
+  #out, #status { scroll-margin-top: 70px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  #drop { border: 2px dashed var(--line); border-radius: 12px; padding: 22px 14px; text-align: center; transition: .15s; cursor: pointer; }
+  #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  #drop small { color: var(--muted); }
+  textarea, input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { resize: vertical; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; margin-top: 12px; }
+  .email { border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; margin-bottom: 10px; }
+  .email.nested { border-left-color: var(--line); margin-left: 10px; }
+  .email .subj { font-weight: 600; }
+  .email .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .email .body { white-space: pre-wrap; font-size: 13px; max-height: 180px; overflow: auto; margin-top: 6px; background: var(--bg); border-radius: 6px; padding: 8px; }
+  .doc { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+  .doc:first-child { border-top: 0; }
+  .doc input { width: auto; margin-top: 4px; }
+  .doc .name { font-weight: 500; overflow-wrap: anywhere; }
+  .doc .note { font-size: 12px; color: var(--warn); }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); margin-left: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty .big { font-size: 40px; }
+  #status { display: none; align-items: center; gap: 10px; padding: 14px 16px; }
+  #status.on { display: flex; }
+  .spin { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: var(--bad); white-space: pre-wrap; }
+  .banner { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .urg { font-weight: 700; font-size: 12px; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .5px; color: #fff; }
+  .urg.low { background: var(--ok); } .urg.medium { background: var(--warn); } .urg.high, .urg.critical { background: var(--bad); }
+  .type { font-weight: 600; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 14px -16px 0; padding: 0 12px; overflow-x: auto; }
+  .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 9px 12px; color: var(--muted); white-space: nowrap; }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab { display: none; padding-top: 6px; } .tab.on { display: block; }
+  ul.clean { padding-left: 20px; margin: 6px 0; }
+  ul.clean li { margin: 4px 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .card .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .sev { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .sev.high { color: var(--bad); } .sev.medium { color: var(--warn); } .sev.low { color: var(--ok); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .tablewrap { overflow-x: auto; }
+  #replyBody { min-height: 340px; font-family: inherit; line-height: 1.55; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+  pre.notice { white-space: pre-wrap; font: inherit; background: var(--bg); padding: 10px; border-radius: 8px; margin: 6px 0; }
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); max-width: 560px; width: calc(100% - 24px); padding: 20px; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 8px 16px; border-radius: 8px; opacity: 0; transition: .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  .privacy { font-size: 12px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Instant<span>Site</span>Mail</h1>
+  <span class="tag">Contracts-manager replies from a dropped email</span>
+  <span class="spacer"></span>
+  <button class="ghost small" id="newBtn" title="Clear everything">New</button>
+  <button class="ghost small" id="profileBtn">My profile</button>
+</header>
+
+<main>
+  <section>
+    <div class="panel">
+      <h2>1 · Drop the email</h2>
+      <div id="drop" tabindex="0" role="button" aria-label="Drop or choose files">
+        <strong>Drop Outlook email here</strong>
+        <small>.msg or .eml, plus any extra drawings / docs (PDF, images, Word, Excel)</small>
+      </div>
+      <input type="file" id="fileInput" multiple hidden
+        accept=".msg,.eml,.pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.txt,.csv,.tif,.tiff,.dwg,.dxf" />
+      <details>
+        <summary>…or paste the email text</summary>
+        <textarea id="paste" rows="7" placeholder="Paste the email here (include From / Date / Subject if you can)"></textarea>
+      </details>
+      <p class="privacy">Your mailbox is never connected. Files are read in memory on this computer and sent only to the Claude API for the analysis. Nothing is saved.</p>
+    </div>
+
+    <div class="panel" id="threadPanel" hidden>
+      <h2>Email thread</h2>
+      <div id="thread"></div>
+    </div>
+
+    <div class="panel" id="docsPanel" hidden>
+      <h2>Attachments to review</h2>
+      <div id="docs"></div>
+    </div>
+
+    <div class="panel">
+      <h2>2 · Anything I should know?</h2>
+      <textarea id="notes" rows="4" placeholder="Background the sender won't say - e.g. 'We raised this in EWN 012 on 3 Oct', 'Slab pour booked for Friday', 'Keep it friendly, good relationship', 'We want a variation for this'"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="analyseBtn" disabled>Analyse &amp; draft reply</button>
+        <span class="muted" id="readyNote"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel" id="status"><div class="spin"></div><div id="statusText">Working…</div></div>
+    <div class="panel" id="out">
+      <div class="empty">
+        <div class="big">✉️</div>
+        <p><strong>Drop an email on the left.</strong><br />Save it from Outlook first: drag the email out of Outlook onto your desktop (or File → Save As), then drag that file in here.</p>
+        <p class="muted">You'll get: what they're really asking, the contractual angle, a drawing check, the information gaps as RFI questions, risks, actions — and a reply ready to send.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="profileDlg">
+  <form method="dialog" id="profileForm">
+    <h2 style="margin-bottom:4px">My profile</h2>
+    <p class="muted" style="margin-top:0;font-size:13px">Used to write replies in your voice. Stored only in this browser.</p>
+    <div class="grid2">
+      <div><label>Name</label><input name="name" placeholder="e.g. Lesego M." /></div>
+      <div><label>Position</label><input name="position" placeholder="Contracts Manager" /></div>
+      <div><label>Company</label><input name="company" /></div>
+      <div><label>Project</label><input name="project" /></div>
+      <div>
+        <label>Our role</label>
+        <select name="role">
+          <option>Main contractor</option><option>Subcontractor</option><option>Specialist / package contractor</option>
+          <option>Design &amp; build contractor</option><option>Client / employer's agent</option>
+        </select>
+      </div>
+      <div>
+        <label>Form of contract</label>
+        <input name="contract" list="contracts" placeholder="e.g. JBCC PBA, NEC4 ECC Option B" />
+        <datalist id="contracts">
+          <option value="JBCC Principal Building Agreement"></option><option value="JBCC N/S Subcontract Agreement"></option>
+          <option value="NEC4 ECC"></option><option value="NEC3 ECC"></option><option value="NEC4 ECS (Subcontract)"></option>
+          <option value="FIDIC Red Book 2017"></option><option value="FIDIC Yellow Book 2017"></option>
+          <option value="GCC 2015"></option><option value="JCT Design and Build"></option><option value="Bespoke / unknown"></option>
+        </datalist>
+      </div>
+    </div>
+    <label>Client / employer (optional)</label><input name="client" />
+    <label>Sign-off</label><textarea name="signoff" rows="3" placeholder="Kind regards,&#10;Name&#10;Contracts Manager | Company | 000 000 0000"></textarea>
+    <label>House style / standing instructions</label><textarea name="style" rows="3" placeholder="e.g. British English. Always reference our letter numbers. Copy the QS on anything with cost."></textarea>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button class="primary" value="save" id="saveProfile">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="refineDlg">
+  <form method="dialog">
+    <h2>Change the reply</h2>
+    <textarea id="refineText" rows="4" placeholder="e.g. Make it firmer and give them 3 working days to respond. Mention the pour on Friday."></textarea>
+    <div class="row" style="margin-top:12px;justify-content:flex-end">
+      <button value="cancel">Cancel</button>
+      <button class="primary" value="go">Rewrite</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  // Escape everything that came from an email or the model before it touches innerHTML.
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtSize = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB");
+  const fmtDate = (d) => { const t = new Date(d); return d && !isNaN(t) ? t.toLocaleString() : (d || ""); };
+
+  const state = { thread: [], documents: [], analysis: null, busy: false };
+  const PROFILE_KEY = "instantsitemail.profile";
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; } catch { return {}; } },
+    set(v) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(v)); } catch {} },
+  };
+
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 1800);
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); toast("Copied"); }
+    catch { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast("Copied"); }
+  }
+
+  // ---------- config ----------
+  fetch("/api/config").then((r) => r.json()).then((c) => {
+    if (!c.ready) $("#readyNote").innerHTML = '<span class="error">API key missing – add ANTHROPIC_API_KEY to .env</span>';
+  }).catch(() => {});
+
+  // ---------- profile ----------
+  const form = $("#profileForm");
+  $("#profileBtn").onclick = () => {
+    const p = store.get();
+    for (const el of form.elements) if (el.name) el.value = p[el.name] || (el.tagName === "SELECT" ? el.options[0].value : "");
+    $("#profileDlg").showModal();
+  };
+  $("#profileDlg").addEventListener("close", () => {
+    if ($("#profileDlg").returnValue !== "save") return;
+    const p = {};
+    for (const el of form.elements) if (el.name) p[el.name] = el.value.trim();
+    store.set(p); toast("Profile saved");
+  });
+  if (!store.get().name) setTimeout(() => toast("Tip: set up My profile so replies are in your name"), 800);
+
+  // ---------- files ----------
+  const drop = $("#drop");
+  drop.onclick = () => $("#fileInput").click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#fileInput").click(); } };
+  $("#fileInput").onchange = (e) => { addFiles([...e.target.files]); e.target.value = ""; };
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => {
+    const files = [...(e.dataTransfer.files || [])];
+    if (files.length) addFiles(files);
+    else toast("Nothing to read – save the email from Outlook to a file first, then drop the file");
+  });
+  // Allow dropping anywhere on the page
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => { if (!drop.contains(e.target)) { e.preventDefault(); if (e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]); } });
+
+  async function addFiles(files) {
+    for (const f of files) {
+      setStatus(`Reading ${f.name}…`);
+      try {
+        const r = await fetch("/api/parse?name=" + encodeURIComponent(f.name), { method: "POST", body: f });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Could not read file");
+        if (j.kind === "email") {
+          const offset = state.thread.length;
+          state.thread.push(...j.thread.map((m) => ({ ...m, level: offset ? m.level + 1 : m.level })));
+          for (const d of j.documents) state.documents.push({ ...d, fromEmail: d.fromEmail + offset });
+        } else {
+          state.documents.push(...j.documents);
+        }
+      } catch (e) {
+        toast(e.message);
+        console.error(e);
+      }
+    }
+    await Promise.all(state.documents.map(shrinkImageIfNeeded));
+    setStatus(null);
+    renderInputs();
+  }
+
+  // The API takes images up to 5 MB / 8000 px. Large scans get resized in the browser.
+  async function shrinkImageIfNeeded(d) {
+    if (d.kind !== "image" || d._checked) return;
+    d._checked = true;
+    const bytes = d.data.length * 0.75;
+    const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = `data:${d.mime};base64,${d.data}`; });
+    if (!img) return;
+    const maxEdge = Math.max(img.naturalWidth, img.naturalHeight);
+    if (bytes < 4.5 * 1048576 && maxEdge <= 7900) return;
+    let edge = Math.min(maxEdge, 4000), out;
+    for (let q = 0.88; q > 0.4; q -= 0.12) {
+      const scale = edge / maxEdge;
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+      out = c.toDataURL("image/jpeg", q).split(",")[1];
+      if (out.length * 0.75 < 4.5 * 1048576) break;
+      edge = Math.round(edge * 0.8);
+    }
+    d.data = out; d.mime = "image/jpeg"; d.size = Math.round(out.length * 0.75);
+    d.note = "Large image – resized to fit the upload limit.";
+  }
+
+  function renderInputs() {
+    const t = $("#thread");
+    $("#threadPanel").hidden = !state.thread.length;
+    t.innerHTML = state.thread.map((m, i) => `
+      <div class="email ${m.level ? "nested" : ""}">
+        <div class="subj">${esc(m.subject || "(no subject)")}${i ? ' <span class="badge">earlier</span>' : ""}</div>
+        <div class="meta">${[m.from && "From: " + esc(m.from), m.to && "To: " + esc(m.to), m.cc && "Cc: " + esc(m.cc), esc(fmtDate(m.date))].filter(Boolean).join("<br />")}</div>
+        <details><summary>Show text</summary><div class="body">${esc(m.body || "(empty)")}</div></details>
+      </div>`).join("");
+
+    $("#docsPanel").hidden = !state.documents.length;
+    $("#docs").innerHTML = state.documents.map((d, i) => `
+      <label class="doc">
+        <input type="checkbox" data-i="${i}" ${d.include ? "checked" : ""} ${d.kind === "unsupported" ? "disabled" : ""} />
+        <div>
+          <div class="name">${esc(d.name)} <span class="badge">${esc(d.kind === "unsupported" ? "can't read" : d.kind)}</span></div>
+          <div class="muted" style="font-size:12px">${fmtSize(d.size)}${typeof d.fromEmail === "number" ? "" : " · added separately"}</div>
+          ${d.note ? `<div class="note">${esc(d.note)}</div>` : ""}
+        </div>
+      </label>`).join("");
+    $("#docs").querySelectorAll("input[type=checkbox]").forEach((cb) => cb.onchange = () => { state.documents[cb.dataset.i].include = cb.checked; });
+    updateButton();
+  }
+  $("#paste").oninput = updateButton;
+  function updateButton() {
+    $("#analyseBtn").disabled = state.busy || !(state.thread.length || state.documents.some((d) => d.include) || $("#paste").value.trim());
+  }
+
+  $("#newBtn").onclick = () => {
+    if ((state.thread.length || state.analysis) && !confirm("Clear this email and analysis?")) return;
+    state.thread = []; state.documents = []; state.analysis = null;
+    $("#paste").value = ""; $("#notes").value = "";
+    renderInputs();
+    $("#out").innerHTML = '<div class="empty"><div class="big">✉️</div><p><strong>Drop the next email on the left.</strong></p></div>';
+  };
+
+  function setStatus(text) {
+    $("#status").classList.toggle("on", !!text);
+    if (text) $("#statusText").textContent = text;
+  }
+
+  // ---------- analyse ----------
+  $("#analyseBtn").onclick = analyse;
+  async function analyse() {
+    const thread = [...state.thread];
+    const pasted = $("#paste").value.trim();
+    if (pasted) thread.push({ level: thread.length ? 1 : 0, subject: thread.length ? "(pasted text)" : "(pasted email)", from: "", to: "", cc: "", date: "", body: pasted });
+    const payload = {
+      thread,
+      documents: state.documents.map(({ _checked, ...d }) => d),
+      notes: $("#notes").value,
+      profile: store.get(),
+    };
+    state.busy = true; updateButton();
+    const started = Date.now();
+    let phase = "reading";
+    const label = () => ({ reading: "Reading the email and attachments", thinking: "Thinking it through like a contracts manager", writing: "Writing up the analysis and reply" }[phase] || "Working");
+    const tick = setInterval(() => setStatus(`${label()}… ${Math.round((Date.now() - started) / 1000)}s`), 1000);
+    setStatus(label() + "…");
+    try {
+      const r = await fetch("/api/analyse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `Request failed (${r.status})`); }
+      const reader = r.body.getReader(); const dec = new TextDecoder();
+      let buf = "", result = null;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+          if (!line.trim()) continue;
+          const evt = JSON.parse(line);
+          if (evt.type === "progress" && evt.phase) phase = evt.phase;
+          if (evt.type === "error") throw new Error(evt.error);
+          if (evt.type === "result") result = evt;
+        }
+      }
+      if (!result) throw new Error("No result came back – please try again.");
+      state.analysis = result.analysis;
+      renderAnalysis(result.analysis);
+      $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) {
+      $("#out").innerHTML = `<p class="error">${esc(e.message)}</p>`;
+      $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
+    } finally {
+      clearInterval(tick); setStatus(null);
+      state.busy = false; updateButton();
+    }
+  }
+
+  // ---------- render ----------
+  const list = (items) => items && items.length ? `<ul class="clean">${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="muted">None.</p>';
+  const table = (rows, cols) => rows && rows.length
+    ? `<div class="tablewrap"><table><thead><tr>${cols.map((c) => `<th>${esc(c[1])}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td>${c[2] ? c[2](r[c[0]]) : esc(r[c[0]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
+    : '<p class="muted">None.</p>';
+
+  function renderAnalysis(a) {
+    const s = a.sender || {};
+    const gapsText = (a.information_gaps || []).map((g, i) => `${i + 1}. ${g.question}`).join("\n");
+    $("#out").innerHTML = `
+      <div class="banner">
+        <span class="urg ${esc(a.urgency)}">${esc(a.urgency)}</span>
+        <span class="type">${esc(a.email_type)}</span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="small" id="exportBtn">Download full analysis</button>
+      </div>
+      <p style="margin:6px 0 2px">${esc(a.summary)}</p>
+      <p class="muted" style="margin:0;font-size:13px">${esc(a.urgency_reason)}</p>
+
+      <div class="tabs" role="tablist">
+        <button class="on" data-tab="reply">Reply</button>
+        <button data-tab="read">Reading the email</button>
+        <button data-tab="contract">Contractual</button>
+        <button data-tab="drawings">Drawings &amp; gaps (${(a.information_gaps || []).length})</button>
+        <button data-tab="actions">Actions &amp; notices</button>
+      </div>
+
+      <div class="tab on" data-tab="reply">
+        <div class="grid2">
+          <div><label>To</label><input id="replyTo" /></div>
+          <div><label>Cc</label><input id="replyCc" /></div>
+        </div>
+        <label>Subject</label><input id="replySubject" />
+        <label>Message</label><textarea id="replyBody"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="copyReply">Copy reply</button>
+          <button id="mailReply">Open in mail app</button>
+          <span class="spacer" style="flex:1"></span>
+          <button class="small" data-refine="Make it firmer and more formal, while staying professional.">Firmer</button>
+          <button class="small" data-refine="Make it more conciliatory and relationship-friendly without giving away our position.">Softer</button>
+          <button class="small" data-refine="Make it shorter and more direct.">Shorter</button>
+          <button class="small" data-refine="Add the information gaps as a numbered list of questions with a response date.">Add RFI list</button>
+          <button class="small" id="customRefine">Change…</button>
+        </div>
+      </div>
+
+      <div class="tab" data-tab="read">
+        <h3>Sender</h3>
+        <p>${esc(s.name)}${s.organisation ? " · " + esc(s.organisation) : ""}<br /><span class="muted">${esc(s.role)}</span></p>
+        <h3>Tone &amp; real intent</h3><p>${esc(a.tone_and_intent)}</p>
+        <h3>What they're asking for</h3>${list(a.requests)}
+        <h3>Key facts</h3>${list(a.key_facts)}
+        <h3>Assumptions made</h3>${list(a.assumptions)}
+      </div>
+
+      <div class="tab" data-tab="contract">
+        <h3>Contractual &amp; commercial implications</h3>
+        ${(a.contractual_implications || []).map((c) => `
+          <div class="card"><strong>${esc(c.issue)}</strong><p style="margin:4px 0">${esc(c.implication)}</p>
+          <div class="k">Clause / mechanism</div><div>${esc(c.clause_hint)}</div>
+          <div class="k" style="margin-top:4px">Action</div><div>${esc(c.action)}</div></div>`).join("") || '<p class="muted">None identified.</p>'}
+        <h3>Deadlines &amp; time-bars</h3>
+        ${table(a.deadlines, [["item", "Item"], ["due", "Due"], ["source", "Source"]])}
+        <h3>Risks</h3>
+        ${table(a.risks, [["severity", "Severity", (v) => `<span class="sev ${esc(v)}">${esc(v)}</span>`], ["risk", "Risk"], ["mitigation", "Mitigation"]])}
+      </div>
+
+      <div class="tab" data-tab="drawings">
+        <h3>Drawing &amp; document review</h3>
+        ${(a.drawing_analysis || []).map((d) => `
+          <div class="card"><strong>${esc(d.document)}</strong><div class="muted">${esc(d.identification)}</div>
+          <div class="k" style="margin-top:6px">Observations</div>${list(d.observations)}
+          <div class="k">Discrepancies</div>${list(d.discrepancies)}</div>`).join("") || '<p class="muted">No drawings or technical documents were reviewed.</p>'}
+        <div class="row" style="justify-content:space-between;margin-top:18px">
+          <h3 style="margin:0">Information gaps</h3>
+          ${gapsText ? '<button class="small" id="copyGaps">Copy as RFI questions</button>' : ""}
+        </div>
+        ${table(a.information_gaps, [["gap", "Gap"], ["why_it_matters", "Why it matters"], ["question", "Question to ask"], ["addressed_to", "To"]])}
+      </div>
+
+      <div class="tab" data-tab="actions">
+        <h3>Recommended actions</h3>
+        ${table(a.recommended_actions, [["action", "Action"], ["owner", "Owner"], ["by_when", "By"]])}
+        <h3>Formal notices to consider</h3>
+        ${(a.additional_notices || []).map((n, i) => `
+          <div class="card"><div class="row" style="justify-content:space-between"><strong>${esc(n.type)}</strong>
+          <button class="small" data-copy-notice="${i}">Copy</button></div>
+          <p class="muted" style="margin:4px 0">${esc(n.reason)}</p><pre class="notice">${esc(n.draft)}</pre></div>`).join("") || '<p class="muted">None needed.</p>'}
+      </div>`;
+
+    const r = a.draft_reply || {};
+    $("#replyTo").value = r.to || ""; $("#replyCc").value = r.cc || "";
+    $("#replySubject").value = r.subject || ""; $("#replyBody").value = r.body || "";
+
+    $("#out").querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
+      $("#out").querySelectorAll(".tabs button, .tab").forEach((x) => x.classList.toggle("on", x.dataset.tab === b.dataset.tab));
+    });
+    $("#copyReply").onclick = () => copy(`Subject: ${$("#replySubject").value}\n\n${$("#replyBody").value}`);
+    $("#mailReply").onclick = () => {
+      const addr = (s) => s.split(/[;,]/).map((x) => (/<([^>]+)>/.exec(x) || [, x])[1].trim()).filter((x) => x.includes("@")).join(";");
+      const q = new URLSearchParams();
+      if ($("#replyCc").value) q.set("cc", addr($("#replyCc").value));
+      q.set("subject", $("#replySubject").value); q.set("body", $("#replyBody").value);
+      window.location.href = `mailto:${addr($("#replyTo").value)}?${q.toString().replace(/\+/g, "%20")}`;
+    };
+    if ($("#copyGaps")) $("#copyGaps").onclick = () => copy(gapsText);
+    $("#out").querySelectorAll("[data-copy-notice]").forEach((b) => b.onclick = () => { const n = a.additional_notices[b.dataset.copyNotice]; copy(`${n.type}\n\n${n.draft}`); });
+    $("#out").querySelectorAll("[data-refine]").forEach((b) => b.onclick = () => refine(b.dataset.refine));
+    $("#customRefine").onclick = () => { $("#refineText").value = ""; $("#refineDlg").showModal(); };
+    $("#exportBtn").onclick = () => download(`InstantSiteMail - ${(a.draft_reply && a.draft_reply.subject) || "analysis"}.md`.replace(/[\\/:*?"<>|]/g, "-"), toMarkdown(a));
+  }
+  $("#refineDlg").addEventListener("close", () => { if ($("#refineDlg").returnValue === "go" && $("#refineText").value.trim()) refine($("#refineText").value.trim()); });
+
+  async function refine(instruction) {
+    const a = state.analysis; if (!a) return;
+    const box = $("#replyBody"); const before = box.value;
+    box.disabled = true; setStatus("Rewriting the reply…");
+    try {
+      const context = JSON.stringify({ ...a, draft_reply: undefined });
+      const r = await fetch("/api/refine", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft: before, instruction, context, profile: store.get() }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Rewrite failed");
+      box.value = j.body; toast("Reply updated");
+    } catch (e) { toast(e.message); }
+    finally { box.disabled = false; setStatus(null); }
+  }
+
+  function toMarkdown(a) {
+    const L = [];
+    const bullets = (xs) => (xs || []).forEach((x) => L.push(`- ${x}`));
+    L.push(`# ${a.email_type} – ${a.urgency.toUpperCase()}`, "", a.summary, "", `_${a.urgency_reason}_`, "");
+    L.push("## Draft reply", "", `**To:** ${$("#replyTo").value}  `, `**Cc:** ${$("#replyCc").value}  `, `**Subject:** ${$("#replySubject").value}`, "", $("#replyBody").value, "");
+    L.push("## Reading the email", "", `**Sender:** ${a.sender.name} – ${a.sender.organisation} (${a.sender.role})`, "", a.tone_and_intent, "", "### Requests"); bullets(a.requests);
+    L.push("", "### Key facts"); bullets(a.key_facts);
+    L.push("", "## Contractual implications"); (a.contractual_implications || []).forEach((c) => L.push(`- **${c.issue}** – ${c.implication} _(Clause: ${c.clause_hint})_ → ${c.action}`));
+    L.push("", "## Deadlines"); (a.deadlines || []).forEach((d) => L.push(`- ${d.item}: **${d.due}** (${d.source})`));
+    L.push("", "## Drawings & documents"); (a.drawing_analysis || []).forEach((d) => { L.push(`### ${d.document}`, d.identification, ""); bullets(d.observations); if (d.discrepancies.length) { L.push("", "Discrepancies:"); bullets(d.discrepancies); } L.push(""); });
+    L.push("## Information gaps / RFIs"); (a.information_gaps || []).forEach((g, i) => L.push(`${i + 1}. **${g.question}** (to ${g.addressed_to}) – ${g.gap}; ${g.why_it_matters}`));
+    L.push("", "## Risks"); (a.risks || []).forEach((r) => L.push(`- [${r.severity}] ${r.risk} → ${r.mitigation}`));
+    L.push("", "## Actions"); (a.recommended_actions || []).forEach((r) => L.push(`- [ ] ${r.action} – ${r.owner}, by ${r.by_when}`));
+    if ((a.additional_notices || []).length) { L.push("", "## Notices"); a.additional_notices.forEach((n) => L.push(`### ${n.type}`, `_${n.reason}_`, "", n.draft, "")); }
+    L.push("", "## Assumptions"); bullets(a.assumptions);
+    return L.join("\n");
+  }
+  function download(name, text) {
+    const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
+    const link = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+})();
+</script>
+</body>
+</html>
