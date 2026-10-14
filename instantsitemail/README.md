@@ -71,12 +71,44 @@ voice from these details. The profile is stored only in your browser.
 | `MAX_TOKENS` | `32000` | Room for the written analysis |
 | `PORT` | `3100` | |
 | `HOST` | `127.0.0.1` | Only this computer can reach the app. Set to `0.0.0.0` to use it from your phone on the same network, **and set a password** |
-| `APP_PASSWORD` | – | When set, the browser asks for it (any username) |
+| `APP_PASSWORD` | – | When set, the browser asks for it (any username). Required whenever `HOST` isn't local |
+
+## Using it online (Render)
+
+The repo's `render.yaml` already defines an `instantsitemail` web service, so
+Render fills in most of the settings for you. Online, the app is
+**password-protected**. It won't even start without `APP_PASSWORD`, and after
+10 wrong passwords from one address that address is locked out for 15 minutes.
+
+**Option A: Blueprint** (use this if you deployed Procore Site Desk as a Blueprint, or haven't deployed anything yet)
+1. On render.com, go to **New → Blueprint** and pick this repository. If the Blueprint already exists, open it and click **Sync** (or **Manual sync**).
+2. Render lists the `instantsitemail` service. When asked, paste in:
+   - `ANTHROPIC_API_KEY`: your key
+   - `APP_PASSWORD`: a long password you don't use anywhere else (a passphrase of 4–5 random words is good)
+3. Click **Apply**. After a minute or two you get a URL like `https://instantsitemail-xxxx.onrender.com`.
+
+**Option B: a single web service** (use this if Procore Site Desk was set up by hand and you don't want a Blueprint)
+1. Go to **New → Web Service** and pick this repository.
+2. Set **Root Directory** to `instantsitemail`, **Build Command** to `npm install`, **Start Command** to `node server.js`, and **Instance Type** to Free.
+3. Under **Environment**, add:
+   - `ANTHROPIC_API_KEY`
+   - `APP_PASSWORD`
+   - `HOST` = `0.0.0.0`
+   - `MODEL` = `claude-opus-5-5`
+4. Click **Create Web Service**.
+
+Open the URL, type any username and your password. Your browser can remember it, and it works on your phone too.
+
+Notes:
+- **Free plan:** the service sleeps after 15 minutes idle, and the first visit afterwards takes 30–60 seconds to wake up.
+- **Your profile** is saved per browser, so set it up once on each device.
+- **Large drawing sets:** an analysis with many drawings can take a few minutes. Keep the page open until it finishes.
+- **Privacy online:** email files pass through the Render server in memory on their way to the Claude API. They're never written to disk or logged.
 
 ## Privacy and confidentiality
 
 - Your mailbox is never connected. The app only sees the files you drop in.
-- Files are parsed in memory by the local server and sent to the Anthropic API
+- Files are parsed in memory by the server (your computer, or Render if you deploy it) and sent to the Anthropic API
   only when you click **Analyse**. Nothing is written to disk, and email
   content isn't logged.
 - Your API key stays on the server and is never sent to the browser.

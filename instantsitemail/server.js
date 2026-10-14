@@ -8,6 +8,7 @@
 // Run:  node server.js     (Node 18+, 20+ recommended)
 
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { parseDropped } = require("./lib/files");
@@ -75,12 +76,43 @@ async function readJson(req, limit) {
   }
 }
 
-function authorised(req) {
-  if (!APP_PASSWORD) return true;
+function passwordMatches(pass) {
+  const a = crypto.createHash("sha256").update(String(pass)).digest();
+  const b = crypto.createHash("sha256").update(APP_PASSWORD).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+// Online, the password is all that stands between the internet and your work
+// mail, so repeated wrong guesses from one address get locked out for a while.
+const failedLogins = new Map(); // ip -> { count, until }
+const MAX_FAILURES = 10;
+const LOCKOUT_MS = 15 * 60 * 1000;
+
+// Behind Render's proxy the right-most X-Forwarded-For entry is the one the proxy
+// added; earlier entries can be forged by the client.
+function clientIp(req) {
+  const fwd = String(req.headers["x-forwarded-for"] || "").split(",").pop().trim();
+  return fwd || req.socket.remoteAddress || "unknown";
+}
+
+// Returns "ok", "denied" or "locked".
+function checkAuth(req) {
+  if (!APP_PASSWORD) return "ok";
+  const ip = clientIp(req);
+  const rec = failedLogins.get(ip);
+  if (rec && rec.until > Date.now()) return "locked";
   const h = req.headers.authorization || "";
-  if (!h.startsWith("Basic ")) return false;
-  const [, pass] = Buffer.from(h.slice(6), "base64").toString("utf8").split(/:(.*)/s);
-  return pass === APP_PASSWORD;
+  if (h.startsWith("Basic ")) {
+    const [, pass] = Buffer.from(h.slice(6), "base64").toString("utf8").split(/:(.*)/s);
+    if (pass !== undefined && passwordMatches(pass)) {
+      failedLogins.delete(ip);
+      return "ok";
+    }
+    const count = (rec && rec.until === 0 ? rec.count : 0) + 1; // an expired lockout starts afresh
+    failedLogins.set(ip, { count, until: count >= MAX_FAILURES ? Date.now() + LOCKOUT_MS : 0 });
+    if (failedLogins.size > 10_000) failedLogins.clear();
+  }
+  return "denied";
 }
 
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon" };
@@ -282,8 +314,13 @@ async function handleRefine(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
-  if (!authorised(req)) {
-    res.writeHead(401, { "WWW-Authenticate": 'Basic realm="InstantSiteMail"' });
+  const auth = checkAuth(req);
+  if (auth === "locked") {
+    res.writeHead(429, { "Content-Type": "text/plain" });
+    return res.end("Too many wrong passwords. Try again in 15 minutes.");
+  }
+  if (auth !== "ok") {
+    res.writeHead(401, { "WWW-Authenticate": 'Basic realm="InstantSiteMail"', "Content-Type": "text/plain" });
     return res.end("Password required");
   }
   const { pathname } = new URL(req.url, "http://x");
@@ -308,7 +345,15 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 0;
 server.headersTimeout = 60_000;
 
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
 if (require.main === module) {
+  if (!LOCAL_HOSTS.has(HOST) && !APP_PASSWORD) {
+    console.error(
+      `Refusing to start: HOST=${HOST} makes the app reachable from other machines, so APP_PASSWORD must be set.`
+    );
+    process.exit(1);
+  }
   server.listen(PORT, HOST, () => {
     console.log(`InstantSiteMail running at http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
     console.log(`Model: ${MODEL} (effort: ${EFFORT})`);
@@ -316,4 +361,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, buildAnalyseRequest };
+module.exports = { server, buildAnalyseRequest, checkAuth };
