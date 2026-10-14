@@ -13,6 +13,10 @@ they can request a live session, which gets logged for the site agent.
 > **Also in this repo:** [InstantSiteMail](instantsitemail/README.md) is a
 > standalone app. Drop in a saved Outlook email with its drawings and get a
 > contracts-manager analysis and a reply ready to send.
+>
+> [SiteInspect](siteinspect/README.md) is a standalone site inspection app for
+> a main contractor: checklists on your phone, photos, actions against
+> subcontractors, signed reports.
 
 ---
 

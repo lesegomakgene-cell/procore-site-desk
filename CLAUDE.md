@@ -31,6 +31,16 @@ above. The brief and JSON schema live in `instantsitemail/lib/prompt.js`;
 parsers in `instantsitemail/lib/`. Tests: `cd instantsitemail && node --test`.
 Default model `claude-opus-5-5`.
 
+## SiteInspect (`siteinspect/`)
+
+A separate, standalone site inspection app for a main contractor (own
+`server.js`, `package.json`, `.env`). Checklists run on a phone, failed items
+become actions assigned to subcontractors, inspections are signed and locked on
+submit, and reports print to PDF. Data: JSON file + photos under `DATA_DIR`
+(`lib/store.js`). Built-in checklists in `lib/templates.js`. Optional AI report
+summary via `lib/claude.js` (default `claude-opus-5-5`, effort medium). Same
+conventions as above. Tests: `cd siteinspect && node --test`.
+
 ## Conventions / constraints
 
 - Keep it dependency-free if reasonable. Built-in `fetch` requires Node 18+.
