@@ -22,6 +22,15 @@ Built deliberately dependency-free and simple so it's easy to run and extend.
 - **`public/index.html`** — the entire frontend: vanilla JS, no build step,
   no framework. Chat UI, topic chips, and the booking modal. Mobile-first.
 
+## InstantSiteMail (`instantsitemail/`)
+
+A separate, standalone app in its own folder (own `server.js`, `package.json`,
+`.env`). The user drops a saved Outlook email (.msg/.eml) plus drawings and gets
+a contracts-manager analysis + reply. Zero dependencies, same conventions as
+above. The brief and JSON schema live in `instantsitemail/lib/prompt.js`;
+parsers in `instantsitemail/lib/`. Tests: `cd instantsitemail && node --test`.
+Default model `claude-opus-5-5`.
+
 ## Conventions / constraints
 
 - Keep it dependency-free if reasonable. Built-in `fetch` requires Node 18+.

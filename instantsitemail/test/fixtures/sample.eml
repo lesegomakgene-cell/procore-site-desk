@@ -1,0 +1,97 @@
+From: Jane Smith <jane.smith@client.example>
+To: Lesego M <lesego@contractor.example>
+Cc: qs@contractor.example
+Subject: =?utf-8?b?RmHDp2FkZSDigJM=?= instruction to proceed
+Date: Tue, 13 Oct 2026 07:45:00 +0200
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============2834699619213568184=="
+
+--===============2834699619213568184==
+Content-Type: multipart/alternative;
+ boundary="===============2912585576646565564=="
+
+--===============2912585576646565564==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Please proceed with W4 at 2400 wide =E2=80=93 see attached elevation.
+R=C3=A9gards, Jane
+
+--===============2912585576646565564==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<p>Please proceed with <b>W4</b> at 2400 wide &ndash; see attached elevation.=
+</p>
+
+--===============2912585576646565564==--
+
+--===============2834699619213568184==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename*=utf-8''A-301%20%C3%89l%C3%A9vation%20Rev%20B.pdf
+MIME-Version: 1.0
+
+JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBv
+Ymo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlw
+ZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVy
+PDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==
+
+--===============2834699619213568184==
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="spec.docx"
+MIME-Version: 1.0
+
+UEsDBBQAAAAIAKqlTl3HHBc8CgAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLMJqSxILda3
+AwBQSwMEFAAAAAgAqqVOXVXCA7F2AAAAswAAABEAAAB3b3JkL2RvY3VtZW50LnhtbLOxr8jNUShL
+LSrOzM+zVTLUM1Cyt7Mpt0rJTy7NTc0rUQBK5xVbldsqlSuBxJPyUypBdAGIKAIRJXbBBanJCsk5
+iaXFqQomekY2+iBBEFkEJgvQ1TvmlOZm5mWW5iqoJeYWWCuk5yRWZealY9GnD7NQH+EiOwBQSwEC
+FAMUAAAACACqpU5dxxwXPAoAAAAIAAAAEwAAAAAAAAAAAAAAgAEAAAAAW0NvbnRlbnRfVHlwZXNd
+LnhtbFBLAQIUAxQAAAAIAKqlTl1VwgOxdgAAALMAAAARAAAAAAAAAAAAAACAATsAAAB3b3JkL2Rv
+Y3VtZW50LnhtbFBLBQYAAAAAAgACAIAAAADgAAAAAAA=
+
+--===============2834699619213568184==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="boq.xlsx"
+MIME-Version: 1.0
+
+UEsDBBQAAAAIAKqlTl24dcFXMQAAAEUAAAAPAAAAeGwvd29ya2Jvb2sueG1ssynPL8pOys/PtrMp
+zkhNLSmG0gp5ibmptkpO/oFKCmABzxRbJUMlfTsbfZg6fbhWAFBLAwQUAAAACACqpU5dfbB6nzgA
+AABWAAAAFAAAAHhsL3NoYXJlZFN0cmluZ3MueG1ssykuLrGzKc60symx8yxJzbXRB3L1QXyIWFBq
+UmKRQqShEbpEYEmlglpiboG1QmleZglCVh9kIABQSwMEFAAAAAgAqqVOXfZXDiFcAAAAvQAAABgA
+AAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWyzKc8vyi7OSE0tsbMBUy6JJYl2NkX55QpFtkqGSnY2
+ySCGo6GSQomtUjGQX2ZnYKNfZmejnwyVc0aWM4LL6QPNgBtkBDfICEmxIZpBRhBRPSNTNFP0kZym
+j3AxAFBLAQIUAxQAAAAIAKqlTl24dcFXMQAAAEUAAAAPAAAAAAAAAAAAAACAAQAAAAB4bC93b3Jr
+Ym9vay54bWxQSwECFAMUAAAACACqpU5dfbB6nzgAAABWAAAAFAAAAAAAAAAAAAAAgAFeAAAAeGwv
+c2hhcmVkU3RyaW5ncy54bWxQSwECFAMUAAAACACqpU5d9lcOIVwAAAC9AAAAGAAAAAAAAAAAAAAA
+gAHIAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sUEsFBgAAAAADAAMAxQAAAFoBAAAAAA==
+
+--===============2834699619213568184==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="A-301.dwg"
+MIME-Version: 1.0
+
+QUMxMDMyIGZha2UgZHdn
+
+--===============2834699619213568184==
+Content-Type: message/rfc822
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+Content-Disposition: attachment
+
+From: Architect <arch@design.example>
+To: jane.smith@client.example
+Subject: =?utf-8?q?Fa=C3=A7ade?= change
+Date: Mon, 12 Oct 2026 09:00:00 +0200
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Window W4 now 2400 wide.
+
+--===============2834699619213568184==--
