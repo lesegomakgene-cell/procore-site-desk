@@ -16,3 +16,24 @@ services:
         value: claude-sonnet-4-6
       - key: REQUEST_WEBHOOK_URL
         sync: false          # optional - a Slack/Discord webhook to get pinged on requests
+
+  # InstantSiteMail - drop in an Outlook email, get a contracts-manager reply.
+  # Lives in the instantsitemail/ folder. Password-protected (APP_PASSWORD).
+  - type: web
+    name: instantsitemail
+    runtime: node
+    plan: free
+    rootDir: instantsitemail
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # Render will prompt you to paste this (kept secret)
+      - key: APP_PASSWORD
+        sync: false          # choose a long password - it protects your work mail
+      - key: HOST
+        value: 0.0.0.0       # listen publicly (the app refuses to start without APP_PASSWORD)
+      - key: MODEL
+        value: claude-opus-5-5
+      - key: EFFORT
+        value: high
