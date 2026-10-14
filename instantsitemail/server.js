@@ -30,7 +30,10 @@ const { SYSTEM_PROMPT, ANALYSIS_SCHEMA, REFINE_SYSTEM } = require("./lib/prompt"
 
 // --- config --------------------------------------------------------------
 const PORT = Number(process.env.PORT || 3100);
-const HOST = process.env.HOST || "127.0.0.1"; // local only by default - this is your work mail
+// Local only by default - this is your work mail. On Render (which sets RENDER=true)
+// the app must listen publicly or Render never sees it start; the password guard
+// below still applies.
+const HOST = process.env.HOST || (process.env.RENDER ? "0.0.0.0" : "127.0.0.1");
 const API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const MODEL = process.env.MODEL || "claude-opus-5-5";
 const EFFORT = process.env.EFFORT || "high";
@@ -314,6 +317,11 @@ async function handleRefine(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+  // Unauthenticated liveness check for Render; reveals nothing about the app.
+  if (req.method === "GET" && req.url === "/healthz") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end("ok");
+  }
   const auth = checkAuth(req);
   if (auth === "locked") {
     res.writeHead(429, { "Content-Type": "text/plain" });
@@ -355,7 +363,8 @@ if (require.main === module) {
     process.exit(1);
   }
   server.listen(PORT, HOST, () => {
-    console.log(`InstantSiteMail running at http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
+    console.log(`InstantSiteMail running at http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT} (listening on ${HOST})`);
+    console.log(APP_PASSWORD ? "Password protection: on" : "Password protection: off (local use only)");
     console.log(`Model: ${MODEL} (effort: ${EFFORT})`);
     if (!API_KEY) console.warn("Warning: ANTHROPIC_API_KEY is not set - add it to .env");
   });
