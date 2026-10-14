@@ -38,3 +38,27 @@ services:
         value: claude-opus-5-5
       - key: EFFORT
         value: high
+
+  # SiteInspect - site inspections, actions and reports for a main contractor.
+  # Lives in the siteinspect/ folder. Password-protected (APP_PASSWORD).
+  # NOTE: the free plan's disk is wiped on every deploy/restart. For real use add
+  # a persistent disk (paid instance) and point DATA_DIR at it, e.g. /var/data.
+  - type: web
+    name: siteinspect
+    runtime: node
+    plan: free
+    rootDir: siteinspect
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: APP_PASSWORD
+        sync: false          # one shared password for the site team
+      - key: HOST
+        value: 0.0.0.0
+      - key: COMPANY_NAME
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false          # optional - enables AI report summaries
+      - key: DATA_DIR
+        value: data          # change to your persistent disk mount, e.g. /var/data

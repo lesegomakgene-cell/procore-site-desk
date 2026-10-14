@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2933">
+  <title>SiteInspect</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand"><span class="logo">SI</span><span>SiteInspect</span></a>
+    <select id="projectPicker" aria-label="Project"></select>
+  </header>
+
+  <main id="view" class="view"><p class="muted pad">Loading…</p></main>
+
+  <nav class="tabs" aria-label="Main">
+    <a href="#/" data-tab="dash"><span class="ico">▦</span>Dashboard</a>
+    <a href="#/inspections" data-tab="insp"><span class="ico">✓</span>Inspections</a>
+    <a href="#/new" data-tab="new" class="tab-new"><span class="ico">＋</span>Inspect</a>
+    <a href="#/actions" data-tab="act"><span class="ico">!</span>Actions</a>
+    <a href="#/setup" data-tab="setup"><span class="ico">⚙</span>Setup</a>
+  </nav>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true"><div id="modalBody"></div></div>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
