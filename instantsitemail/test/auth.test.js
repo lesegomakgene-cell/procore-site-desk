@@ -16,6 +16,16 @@ test("refuses to listen publicly without a password", () => {
   assert.match(r.stderr, /APP_PASSWORD must be set/);
 });
 
+test("on Render it listens publicly and still requires a password", () => {
+  const r = spawnSync(process.execPath, [SERVER], {
+    env: { ...process.env, RENDER: "true", HOST: "", APP_PASSWORD: "", PORT: "0" },
+    encoding: "utf8",
+    timeout: 5000,
+  });
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /HOST=0\.0\.0\.0 .*APP_PASSWORD must be set/);
+});
+
 test("password protection and lockout", async (t) => {
   const port = 3300 + Math.floor(Math.random() * 500);
   const child = spawn(process.execPath, [SERVER], {
@@ -28,6 +38,9 @@ test("password protection and lockout", async (t) => {
   const basic = (p) => ({ authorization: "Basic " + Buffer.from("me:" + p).toString("base64") });
 
   assert.strictEqual((await fetch(url)).status, 401);
+  const health = await fetch(`http://127.0.0.1:${port}/healthz`);
+  assert.strictEqual(health.status, 200);
+  assert.strictEqual(await health.text(), "ok");
   assert.strictEqual((await fetch(url, { headers: basic("s3cret:pass") })).status, 200);
 
   for (let i = 0; i < 10; i++) assert.strictEqual((await fetch(url, { headers: basic("wrong") })).status, 401);
