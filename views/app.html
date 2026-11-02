@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b2f4b">
+<title>Site Desk - your Procore helper</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body class="app-page">
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="/">
+      <img src="/logo.svg" alt="">
+      <div>
+        <h1>Site Desk</h1>
+        <div class="tagline">Your Procore helper on site</div>
+      </div>
+    </a>
+    <div class="grow"></div>
+    <button class="btn btn-brass head-btn" id="talkBtn" type="button">
+      <span class="long">Talk to <span class="agent-name">the site agent</span></span>
+      <span class="short">Live help</span>
+    </button>
+    <button class="avatar-btn" id="accountBtn" type="button" aria-label="Your account" title="Your account"><span id="initial">?</span></button>
+  </div>
+</header>
+
+<main class="app">
+  <section class="welcome" id="welcome">
+    <h2 id="greeting">Hello.</h2>
+    <p class="lead muted">I'm the site's Procore helper. Ask me how to do something, or pick a topic to get started.</p>
+    <div class="topics" id="topics" aria-label="Common topics"></div>
+    <div class="card help-card">
+      <div>
+        <h3>Prefer to talk it through?</h3>
+        <p class="muted">Request a live session with <strong class="agent-name">the site agent</strong>. It's a quick call or screen-share to get you unstuck.</p>
+      </div>
+      <button class="btn btn-brass" id="welcomeBook" type="button">Request a live session</button>
+    </div>
+  </section>
+
+  <section class="chat" id="chat" aria-live="polite" aria-label="Conversation" hidden></section>
+</main>
+
+<div class="dock">
+  <div class="dock-inner">
+    <div class="chips" id="chips" hidden></div>
+    <form class="composer" id="composer">
+      <label for="input" class="sr-only">Your question</label>
+      <textarea id="input" rows="1" maxlength="2000" placeholder="Ask about RFIs, the daily log, drawings, inspections..."></textarea>
+      <button class="send" id="send" type="submit" aria-label="Send question">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <p class="fine">Unofficial team tool. Not affiliated with Procore. Menus may differ by your account and permissions.</p>
+  </div>
+</div>
+
+<!-- Live session request -->
+<div class="overlay" id="bookOverlay" role="dialog" aria-modal="true" aria-labelledby="bookTitle">
+  <div class="sheet">
+    <form id="bookForm" novalidate>
+      <h2 id="bookTitle">Request a live session</h2>
+      <p class="sub">Tell <span class="agent-name">the site agent</span> what you need and when suits you. They'll get in touch to set it up.</p>
+      <div class="alert alert-error" id="bookError" role="alert" hidden></div>
+      <div class="field">
+        <label for="b-contact">Best way to reach you (WhatsApp number or email)</label>
+        <input id="b-contact" type="text" autocomplete="tel" inputmode="email" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="b-topic">What do you need help with?</label>
+        <select id="b-topic"></select>
+      </div>
+      <div class="row stack-sm">
+        <div class="field">
+          <label for="b-when">When suits you?</label>
+          <select id="b-when">
+            <option>As soon as possible</option>
+            <option>Today</option>
+            <option>Tomorrow</option>
+            <option>This week</option>
+            <option>Next week</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="b-tod">Time of day</label>
+          <select id="b-tod">
+            <option>Any time</option>
+            <option>Morning</option>
+            <option>Afternoon</option>
+            <option>After work</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="b-details">Anything that helps them prepare <span class="muted">(optional)</span></label>
+        <textarea id="b-details" maxlength="1500"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" type="button" id="bookCancel">Cancel</button>
+        <button class="btn btn-brass" type="submit" id="bookSubmit">Send request</button>
+      </div>
+    </form>
+
+    <div id="bookDone" hidden>
+      <h2 id="doneTitle">Request sent</h2>
+      <p class="sub" id="doneSub"></p>
+      <div class="alert" id="doneNote"></div>
+      <div class="actions done-actions" id="doneActions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Account -->
+<div class="overlay" id="accOverlay" role="dialog" aria-modal="true" aria-labelledby="accTitle">
+  <div class="sheet">
+    <h2 id="accTitle">Your account</h2>
+    <p class="sub" id="accSub"></p>
+
+    <details class="acc-section">
+      <summary>Change password</summary>
+      <form id="pwForm" novalidate>
+        <div class="alert alert-error" id="pwError" role="alert" hidden></div>
+        <div class="alert alert-ok" id="pwOk" role="status" hidden>Password changed. Other devices have been signed out.</div>
+        <div class="field">
+          <label for="pw-current">Current password</label>
+          <input id="pw-current" type="password" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="pw-new">New password</label>
+          <input id="pw-new" type="password" autocomplete="new-password">
+          <div class="hint">At least 8 characters.</div>
+        </div>
+        <button class="btn btn-primary" type="submit" id="pwBtn">Save new password</button>
+      </form>
+    </details>
+
+    <details class="acc-section">
+      <summary>Delete my account</summary>
+      <form id="delForm" novalidate>
+        <p class="muted small acc-warn">This removes your account and your details from Site Desk. It can't be undone.</p>
+        <div class="alert alert-error" id="delError" role="alert" hidden></div>
+        <div class="field">
+          <label for="del-password">Enter your password to confirm</label>
+          <input id="del-password" type="password" autocomplete="current-password">
+        </div>
+        <button class="btn btn-danger" type="submit" id="delBtn">Delete my account</button>
+      </form>
+    </details>
+
+    <div class="actions">
+      <button class="btn btn-ghost" type="button" id="accClose">Close</button>
+      <button class="btn btn-primary" type="button" id="signOut">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<noscript><p class="fine">Site Desk needs JavaScript to run. Please turn it on in your browser.</p></noscript>
+<script src="/app.js"></script>
+</body>
+</html>

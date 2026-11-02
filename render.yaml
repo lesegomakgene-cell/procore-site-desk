@@ -5,17 +5,38 @@ services:
     name: procore-site-desk
     runtime: node
     plan: free
+    # KEEP ACCOUNTS SAFE: the free plan forgets everything when the app restarts or
+    # sleeps. For real use, switch to the Starter plan and add a disk (about $7 + $0.25
+    # a month), by un-commenting the lines below. The app finds /var/data by itself.
+    #   plan: starter
+    #   disk:
+    #     name: sitedesk-data
+    #     mountPath: /var/data
+    #     sizeGB: 1
     buildCommand: npm install
     startCommand: node server.js
+    healthCheckPath: /healthz
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false          # Render will prompt you to paste this (kept secret)
+      - key: MODEL
+        value: claude-sonnet-5-5   # cheaper and faster: claude-haiku-5-5
       - key: SITE_AGENT_NAME
         value: Lesego
-      - key: MODEL
-        value: claude-sonnet-4-6
+      - key: ADMIN_PASSWORD
+        sync: false          # protects /admin (statistics and people). Choose a long one.
+      - key: SIGNUP_CODE
+        sync: false          # a word or number the team needs to create an account
+      - key: RESEND_API_KEY
+        sync: false          # free at resend.com - emails you when someone requests a session
+      - key: NOTIFY_EMAIL
+        sync: false          # the SAME email you signed up to Resend with
+      - key: SITE_AGENT_WHATSAPP
+        sync: false          # e.g. 0821234567 - lets people message you if an alert fails
+      - key: SITE_AGENT_EMAIL
+        sync: false          # optional - shown to people as another way to reach you
       - key: REQUEST_WEBHOOK_URL
-        sync: false          # optional - a Slack/Discord webhook to get pinged on requests
+        sync: false          # optional - a Slack/Discord webhook for instant chat alerts
 
   # InstantSiteMail - drop in an Outlook email, get a contracts-manager reply.
   # Lives in the instantsitemail/ folder. Password-protected (APP_PASSWORD).

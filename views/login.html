@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b2f4b">
+<title>Site Desk - sign in</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body class="auth-page">
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="/login">
+      <img src="/logo.svg" alt="">
+      <div>
+        <h1>Site Desk</h1>
+        <div class="tagline">Your Procore helper on site</div>
+      </div>
+    </a>
+  </div>
+</header>
+
+<main class="auth-main">
+  <div class="intro">
+    <h2>Welcome to Site Desk</h2>
+    <p class="muted">Quick, friendly answers on Procore for the whole site team. Sign in, or create a free account to get started.</p>
+  </div>
+
+  <div class="card auth-card">
+    <div class="tabs" role="tablist" aria-label="Sign in or create account">
+      <button class="tab" role="tab" id="tab-signin" aria-selected="true" aria-controls="panel-signin">Sign in</button>
+      <button class="tab" role="tab" id="tab-signup" aria-selected="false" aria-controls="panel-signup">Create account</button>
+    </div>
+
+    <!-- Sign in -->
+    <form id="panel-signin" role="tabpanel" aria-labelledby="tab-signin" novalidate>
+      <div class="alert alert-error" id="signin-error" role="alert" hidden></div>
+      <div class="field">
+        <label for="si-login">Email or cell number</label>
+        <input id="si-login" type="text" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="si-password">Password</label>
+        <div class="pw-wrap">
+          <input id="si-password" type="password" autocomplete="current-password">
+          <button type="button" class="pw-toggle" data-for="si-password">Show</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" id="signin-btn" type="submit">Sign in</button>
+      <p class="small muted center-note">Forgotten your password? Ask <span class="agent-name">the site agent</span> to reset it for you.</p>
+    </form>
+
+    <!-- Create account -->
+    <form id="panel-signup" role="tabpanel" aria-labelledby="tab-signup" novalidate hidden>
+      <div class="alert alert-error" id="signup-error" role="alert" hidden></div>
+      <div class="field">
+        <label for="su-name">Full name</label>
+        <input id="su-name" type="text" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="su-login">Email or cell number</label>
+        <input id="su-login" type="text" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false">
+        <div class="hint">This is what you'll use to sign in. A WhatsApp number works best for live sessions.</div>
+      </div>
+      <div class="field">
+        <label for="su-password">Choose a password</label>
+        <div class="pw-wrap">
+          <input id="su-password" type="password" autocomplete="new-password">
+          <button type="button" class="pw-toggle" data-for="su-password">Show</button>
+        </div>
+        <div class="hint">At least 8 characters.</div>
+      </div>
+      <div class="row stack-sm">
+        <div class="field">
+          <label for="su-role">Your role</label>
+          <select id="su-role"></select>
+        </div>
+        <div class="field">
+          <label for="su-company">Company <span class="muted">(optional)</span></label>
+          <input id="su-company" type="text" autocomplete="organization">
+        </div>
+      </div>
+      <div class="field" id="code-field" hidden>
+        <label for="su-code">Site access code</label>
+        <input id="su-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="hint">Ask the site office for the code.</div>
+      </div>
+      <div class="trap" aria-hidden="true">
+        <label for="su-website">Leave this empty</label>
+        <input id="su-website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="field">
+        <label class="check" for="su-consent">
+          <input id="su-consent" type="checkbox">
+          <span>I agree that Site Desk keeps my name, contact details and how I use it (for example, which topics I ask about) so the site team can support me and improve the service. I can delete my account at any time.</span>
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" id="signup-btn" type="submit">Create my account</button>
+    </form>
+  </div>
+
+  <p class="foot small muted">Unofficial team tool. Not affiliated with Procore.</p>
+</main>
+
+<script src="/login.js"></script>
+</body>
+</html>

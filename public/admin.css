@@ -1,0 +1,28 @@
+/* Site Desk - admin dashboard */
+.masthead-inner.wide { max-width: 1100px; }
+.admin { max-width: 1100px; margin: 0 auto; padding: 22px 18px 60px; }
+#alerts .alert { margin-bottom: 10px; }
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.toolbar .input { max-width: 300px; min-height: 40px; }
+.section-title { font-size: 22px; margin: 22px 0 10px; }
+.empty { padding: 26px; text-align: center; color: var(--muted); }
+.cell-name b { display: block; }
+.cell-name span { font-size: 12.5px; color: var(--muted); }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-row { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid #efe8d8; }
+.status-row:last-child { border-bottom: 0; }
+.status-row .what { flex: 1; min-width: 0; }
+.status-row .what b { display: block; margin-bottom: 2px; }
+.status-row .what p { font-size: 14px; color: var(--muted); }
+.status-row code { background: var(--paper-2); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+.req { padding: 16px 18px; margin-bottom: 12px; }
+.req header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.req header b { font: 700 18px var(--serif); }
+.req dl { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; margin: 0 0 10px; font-size: 14.5px; }
+.req dt { color: var(--muted); }
+.req dd { margin: 0; overflow-wrap: anywhere; }
+.req .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.temp-pw { font: 700 24px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; padding: 14px; text-align: center; background: var(--paper-2); border-radius: 10px; margin: 12px 0; user-select: all; }
+.devices { display: flex; gap: 10px; flex-wrap: wrap; }
+.devices .pill { padding: 10px 16px; background: var(--paper-2); border-radius: 10px; }
+.devices .pill b { font: 700 22px var(--serif); display: block; color: var(--navy); }

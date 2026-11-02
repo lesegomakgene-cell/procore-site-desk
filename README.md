@@ -1,117 +1,85 @@
-# Procore Site Desk
+# Site Desk
 
-A simple help chatbot for a construction site team. It answers common Procore
-questions — safety, project management and everyday field tools — so the site
-agent isn't fielding the same questions all day. When someone needs a person,
-they can request a live session, which gets logged for the site agent.
+A friendly Procore help assistant for a construction site team.
 
-- Zero dependencies (plain Node.js — built-in HTTP server + `fetch`)
-- Your Anthropic API key stays on the server, never in the browser
-- Mobile-first UI, built for phones on site
-- Live-session requests saved to a local file
+- **Accounts.** People create an account (name, email or cell number, password). Nothing is
+  visible until they sign in.
+- **Ask anything Procore.** Safety, RFIs, the daily log, drawings, inspections and more, in plain
+  step-by-step answers that work on a phone.
+- **Live sessions.** If the assistant can't solve it, the person taps *Request a live session*.
+  You are alerted by email (and optionally Slack/Discord), with a one-tap WhatsApp reply link.
+  If an alert can't be delivered, the person is told and can message you on WhatsApp directly.
+- **Your dashboard at `/admin`.** Who signed up, who is active, what people ask about, how helpful
+  the answers are, busiest hours, phone vs computer, live-session requests, and one-click
+  health checks. Reset passwords, switch people off, download everything as CSV.
 
-> **Also in this repo:** [InstantSiteMail](instantsitemail/README.md) is a
-> standalone app. Drop in a saved Outlook email with its drawings and get a
-> contracts-manager analysis and a reply ready to send.
->
-> [SiteInspect](siteinspect/README.md) is a standalone site inspection app for
-> a main contractor: checklists on your phone, photos, actions against
-> subcontractors, signed reports.
+No database and no dependencies: plain Node.js 18 or newer.
 
 ---
 
-## Setup (about 2 minutes)
+## Setting it up on Render (about 10 minutes)
 
-You need **Node.js 18 or newer** (20+ recommended). Check with `node --version`.
+The service already exists if you set up the earlier version. Add these in **Render, your service,
+Environment**. Only the first two are essential.
 
-1. Add your API key:
+| Setting | What to put | Why |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | your key from console.anthropic.com | powers the answers |
+| `ADMIN_PASSWORD` | a long password you choose | opens `/admin` (without it the admin page stays off) |
+| `SIGNUP_CODE` | any word or number | stops strangers using up your credit. Give it to your team |
+| `RESEND_API_KEY` and `NOTIFY_EMAIL` | free key from resend.com, and the email you signed up there with | emails you every live-session request |
+| `SITE_AGENT_WHATSAPP` | your cell number, e.g. `0821234567` | fallback button if an alert fails |
 
-   ```bash
-   cp .env.example .env
-   ```
+Then open `https://your-app.onrender.com/admin` (any username, your admin password) and go to
+**Health and settings**. Each line shows green when it's working, and has **Test** buttons for the
+assistant and for live-session alerts.
 
-   Open `.env` and paste your Anthropic API key into `ANTHROPIC_API_KEY`.
-   Get one at https://console.anthropic.com (Settings → API Keys).
-   While you're there, set `SITE_AGENT_NAME` to your name.
+### Keep accounts safe (important)
 
-2. Start it:
+Render's free plan **forgets everything whenever the app restarts or goes to sleep**. That would
+delete every account. To keep them:
 
-   ```bash
-   node server.js
-   ```
+1. In Render, open the service and change the plan to **Starter** (about $7 a month).
+2. Add a **Disk**: name `sitedesk-data`, mount path `/var/data`, size 1 GB (about $0.25 a month).
 
-3. Open **http://localhost:3000** in your browser.
-
-That's it. No `npm install` needed.
+Nothing else to change: the app finds `/var/data` automatically, and the Health tab will turn green.
 
 ---
 
 ## Using it
 
-- **Ask anything Procore.** Type a question or tap a topic chip (Daily Log,
-  RFIs, Submittals, Drawings, Inspections, etc.).
-- **Request a live session.** The amber button opens a short form. Submissions
-  are appended to `session-requests.jsonl` and printed in the server console.
+- **Team members:** open your link, tap *Create account*, enter the site access code.
+- **Forgotten password:** they ask you. In `/admin`, **People**, **Reset password** gives you a
+  temporary one to pass on. They can change it from the menu (the round button, top right).
+- **Leaving:** people can delete their own account from that menu, or you can delete it for them.
 
-### Seeing the session requests
+## Privacy
 
-As the site agent, you can view requests two ways:
+Sign-up shows a short notice and needs a tick-box. By default only the *topic* of each question is
+recorded (for example "RFIs"), not the question. Set `STORE_QUESTIONS=true` if you also want the
+first 200 characters of each question in the activity export. Passwords are stored only as salted
+scrypt hashes and can't be read back, even by you.
 
-- Read the file directly: `cat session-requests.jsonl`
-- Or visit **http://localhost:3000/api/session-requests** (returns JSON).
+## Running it on your own computer
 
----
-
-## Configuration (`.env`)
-
-| Setting             | What it does                                              |
-|---------------------|-----------------------------------------------------------|
-| `ANTHROPIC_API_KEY` | Required. Your API key.                                   |
-| `MODEL`             | `claude-sonnet-4-6` (default) or `claude-haiku-4-5` (cheaper/faster) |
-| `PORT`              | Defaults to `3000`.                                       |
-| `SITE_AGENT_NAME`   | Shown in the UI and on the booking form.                  |
-| `SITE_AGENT_EMAIL`  | Optional. Shown to users after they book.                 |
-
-You can tune what the assistant knows and how it answers by editing the
-`SYSTEM_PROMPT` near the top of `server.js`.
-
----
-
-## Sharing it with the team
-
-Running `node server.js` serves it on your machine only. To let the whole site
-team use it, you'll want to host it somewhere (Render, Railway, a small VPS, or
-your company server). **Before you deploy publicly, read the security note below.**
-
----
-
-## Security notes (read before deploying)
-
-- The API key lives only in `.env` on the server — never exposed to the browser.
-  `.gitignore` keeps `.env` and `session-requests.jsonl` out of git.
-- `GET /api/session-requests` has **no authentication**. That's fine on your own
-  machine, but add a password / login before putting this on the public internet,
-  or anyone could read the requests.
-- There's no rate limiting. On a public deploy, add one so your API usage can't
-  be run up by strangers.
-
-Ask Claude Code to "add basic auth to the requests endpoint" or "add rate
-limiting" when you're ready — see `CLAUDE.md`.
-
----
+```bash
+cp .env.example .env     # fill in ANTHROPIC_API_KEY, ADMIN_PASSWORD, SIGNUP_CODE
+node server.js           # http://localhost:3000
+npm test                 # checks everything still works
+```
 
 ## Files
 
 ```
-procore-site-desk/
-├── server.js              # the whole backend (serve UI, proxy API, save requests)
-├── public/index.html      # the chat interface
-├── package.json
-├── .env.example           # copy to .env
-├── .gitignore
-├── CLAUDE.md              # context for iterating with Claude Code
-└── README.md
+server.js            the server: pages, accounts, chat, live sessions, admin
+lib/                 accounts and passwords, storage, statistics, notifications, topics
+views/               the sign-in page and the chat page
+public/              styles, scripts and logo
+admin/               the dashboard
+test/                automated checks
+instantsitemail/     separate app (unchanged)
+siteinspect/         separate app (unchanged)
 ```
 
-Unofficial team tool. Not affiliated with Procore. Procore's exact menus and
-available tools depend on your company's account setup and your permissions.
+Unofficial team tool. Not affiliated with Procore. Procore's exact menus depend on your company's
+account setup and each person's permissions.

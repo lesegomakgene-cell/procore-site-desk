@@ -1,11 +1,12 @@
 {
   "name": "procore-site-desk",
-  "version": "1.0.0",
-  "description": "A simple Procore help chatbot for a construction site team, with a request-a-live-session feature.",
+  "version": "2.0.0",
+  "description": "Site Desk: a Procore help assistant for a construction site team, with accounts, live-session requests and a usage dashboard.",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/server.test.js test/units.test.js"
   },
   "engines": {
     "node": ">=18"

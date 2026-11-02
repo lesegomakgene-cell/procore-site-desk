@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1b2f4b">
+<title>Site Desk - admin</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner wide">
+    <a class="brand" href="/admin">
+      <img src="/logo.svg" alt="">
+      <div>
+        <h1>Site Desk</h1>
+        <div class="tagline">Admin and statistics</div>
+      </div>
+    </a>
+    <div class="grow"></div>
+    <button class="btn btn-ghost btn-small" id="refresh" type="button">Refresh</button>
+    <a class="btn btn-ghost btn-small" href="/">Open the app</a>
+  </div>
+</header>
+
+<main class="admin">
+  <div id="alerts"></div>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" data-tab="people" aria-selected="false">People</button>
+    <button class="tab" role="tab" data-tab="requests" aria-selected="false">Live-session requests</button>
+    <button class="tab" role="tab" data-tab="health" aria-selected="false">Health and settings</button>
+  </div>
+
+  <section id="view-overview"></section>
+  <section id="view-people" hidden></section>
+  <section id="view-requests" hidden></section>
+  <section id="view-health" hidden></section>
+</main>
+
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="sheet">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <div class="actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>
