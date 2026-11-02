@@ -4,23 +4,47 @@ Context for working on this project with Claude Code.
 
 ## What this is
 
-A small Procore help chatbot for a construction site team, plus a
-"request a live session" feature so users can ask the site agent for time.
-Built deliberately dependency-free and simple so it's easy to run and extend.
+Site Desk: a Procore help assistant for a construction site team. People create an account,
+chat with the assistant, and can request a live session with the site agent (who is alerted
+for real). `/admin` shows usage statistics and manages accounts. Built deliberately
+dependency-free (plain Node 18+, no database) so it is easy to run and extend.
 
 ## Architecture
 
-- **`server.js`** — a single zero-dependency Node HTTP server. It:
-  - serves the static frontend from `public/`
-  - `POST /api/chat` → proxies to the Anthropic Messages API
-    (`https://api.anthropic.com/v1/messages`) using the key in `.env`, with a
-    Procore-focused system prompt. Returns `{ reply }`.
-  - `POST /api/request-session` → appends a JSON line to `session-requests.jsonl`
-  - `GET /api/session-requests` → returns logged requests (NO auth yet)
-  - `GET /api/config` → returns the site agent name for the UI
-  - includes a tiny built-in `.env` loader (no dotenv dependency)
-- **`public/index.html`** — the entire frontend: vanilla JS, no build step,
-  no framework. Chat UI, topic chips, and the booking modal. Mobile-first.
+- **`server.js`** - routing and handlers. Pages: `/login` (also `/signup`), `/` (needs a session),
+  `/admin` (HTTP Basic auth with `ADMIN_PASSWORD`; switched off if unset).
+  APIs: `/api/signup|login|logout|me|chat|feedback|event|request-session`,
+  `/api/account/password|delete`, `/api/admin/*`.
+- **`lib/`** - `config.js` (env + data folder), `store.js` (JSON/JSONL files: users, sessions,
+  requests, usage events), `auth.js` (scrypt, cookies, sessions), `notify.js` (Resend email +
+  webhook, checks delivery really succeeded), `stats.js` (dashboard maths, SAST days),
+  `topics.js` (topic cards, question classifier, roles), `util.js`.
+- **`views/`** `login.html`, `app.html`. **`public/`** `theme.css` (shared look), `app.css`,
+  `admin.css`, `app.js`, `login.js`, `logo.svg`. **`admin/`** `index.html`, `admin.js`.
+- All page JavaScript is external and the CSP is `script-src 'self'; style-src 'self'`: do not
+  add inline `<script>`, inline `style=""` attributes or `setAttribute("style")`. Setting
+  `el.style.x = ...` from JS is fine. Build admin DOM with text nodes, never `innerHTML` with data.
+
+## Behaviour worth knowing
+
+- Sign-in name is an email or a SA cell number (normalised in `util.parseLogin`). Passwords:
+  scrypt, 8+ chars. Sessions: random token, only its hash is stored, HttpOnly + SameSite=Lax
+  (+ Secure behind https). POSTs must be `application/json` and same-origin (CSRF defence).
+- Live-session requests: saved, then email + webhook are awaited; the response says
+  `notified: true/false`, and when false the person gets a WhatsApp fallback link.
+- The assistant ends a reply with `[[SESSION]]` when a live session would help; the server strips
+  it and returns `offerSession: true` so the app shows a button.
+- Usage events (`events.jsonl`) store topic + counts, not question text, unless `STORE_QUESTIONS=true`.
+  Deleting a person rewrites events/requests to remove identity but keeps anonymous totals.
+- Data lives in `DATA_DIR` (`/var/data` is auto-used on Render). The free Render plan has no
+  persistent disk, so accounts vanish on restart; the admin Health tab warns about this.
+- Rate limits are in memory per process: sign-up (`SIGNUP_LIMIT`/hour/IP), sign-in, chat per person,
+  `DAILY_LIMIT` questions per person per day.
+
+## Tests
+
+`npm test` (spawns the real server against fake Anthropic/Resend/webhook services).
+Test hooks: `ANTHROPIC_API_URL`, `RESEND_API_URL`.
 
 ## InstantSiteMail (`instantsitemail/`)
 
@@ -54,19 +78,16 @@ conventions as above. Tests: `cd siteinspect && node --test`.
 
 ## Good next steps (ask me to do any of these)
 
-- Add authentication to `GET /api/session-requests` before any public deploy.
-- Add rate limiting on `/api/chat`.
-- Email or Slack a notification to the site agent when a session is requested.
-- Stream responses (Server-Sent Events) for faster-feeling replies.
-- Add a small admin page at `/admin` to view/clear session requests.
-- Ground answers in your company's actual Procore workflows (paste your SOPs
-  into the system prompt or load them from a file).
-- Optional: integrate the Procore API for live project data — would need OAuth
-  and is a larger change.
+- A second storage backend (e.g. a hosted database) so accounts survive on Render's free plan.
+- A weekly usage summary emailed to the site agent.
+- Admin approval of new accounts instead of (or as well as) the site access code.
+- Stream answers (Server-Sent Events) for faster-feeling replies.
+- Ground answers in the company's own Procore SOPs (load them into the system prompt).
 
 ## Running
 
 ```bash
-cp .env.example .env   # add ANTHROPIC_API_KEY and SITE_AGENT_NAME
+cp .env.example .env   # add ANTHROPIC_API_KEY, ADMIN_PASSWORD, SIGNUP_CODE
 node server.js         # http://localhost:3000
+npm test
 ```
