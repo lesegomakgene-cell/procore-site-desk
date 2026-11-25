@@ -91,5 +91,6 @@
 .direct a { font-weight: 600; white-space: nowrap; }
 .welcome .direct { margin-top: 12px; }
 .done-contacts { margin-top: 12px; font-size: 14px; color: var(--muted); text-align: center; }
-.done-contacts a { font-weight: 600; }
+.done-contacts a { font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) { .done-actions { flex-direction: column; } .done-actions .btn { flex: none; width: 100%; } }
 .fb .tool { margin-left: 6px; }
