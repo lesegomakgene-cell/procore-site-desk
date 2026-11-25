@@ -96,17 +96,24 @@ async function startApp(extraEnv = {}) {
   };
 }
 
-// A tiny browser: remembers cookies, sends JSON.
+// A tiny browser: keeps every cookie it is given (like a real one), sends JSON.
+// cookie() / setCookie() deal with the sign-in cookie only.
 function client(base) {
-  let cookie = "";
+  const jar = new Map();
   async function call(method, p, opts = {}) {
     const headers = { ...(opts.headers || {}) };
     if (opts.json !== undefined) headers["Content-Type"] = "application/json";
-    if (cookie && !opts.noCookie) headers.Cookie = cookie;
+    if (jar.size && !opts.noCookie) headers.Cookie = [...jar].map(([k, v]) => k + "=" + v).join("; ");
     if (opts.admin) headers.Authorization = "Basic " + Buffer.from("admin:" + opts.admin).toString("base64");
     const res = await fetch(base + p, { method, headers, body: opts.json !== undefined ? JSON.stringify(opts.json) : opts.body, redirect: "manual" });
-    const set = res.headers.get("set-cookie");
-    if (set && !opts.noCookie) cookie = set.split(";")[0].endsWith("=") ? "" : set.split(";")[0];
+    if (!opts.noCookie) {
+      for (const set of res.headers.getSetCookie()) {
+        const pair = set.split(";")[0];
+        const i = pair.indexOf("=");
+        const name = pair.slice(0, i), value = pair.slice(i + 1);
+        if (value) jar.set(name, value); else jar.delete(name);
+      }
+    }
     const text = await res.text();
     let data = null;
     try { data = JSON.parse(text); } catch {}
@@ -115,8 +122,8 @@ function client(base) {
   return {
     get: (p, o) => call("GET", p, o),
     post: (p, json, o) => call("POST", p, { ...o, json }),
-    cookie: () => cookie,
-    setCookie: (c) => { cookie = c; },
+    cookie: () => (jar.has("sd_session") ? "sd_session=" + jar.get("sd_session") : ""),
+    setCookie: (c) => { const i = c.indexOf("="); if (i > 0) jar.set(c.slice(0, i), c.slice(i + 1)); },
   };
 }
 

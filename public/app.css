@@ -85,6 +85,9 @@
 .acc-section summary { cursor: pointer; font-weight: 600; padding: 12px 0; list-style-position: inside; }
 .acc-section form { padding: 4px 0 14px; }
 .acc-warn { margin-bottom: 12px; }
+.acc-links { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+.fine a { color: var(--muted); }
+@media (max-width: 560px) { .dash-btn { display: none; } }
 .done-actions { flex-wrap: wrap; }
 .done-actions .btn { flex: 1 1 150px; }
 .direct { margin-top: 14px; text-align: center; line-height: 1.7; }

@@ -33,7 +33,7 @@
     if (s < 90) return "just now";
     if (s < 3600) return Math.round(s / 60) + " min ago";
     if (s < 86400) return Math.round(s / 3600) + " h ago";
-    if (s < 86400 * 30) return Math.round(s / 86400) + " days ago";
+    if (s < 86400 * 30) { const d = Math.round(s / 86400); return d === 1 ? "yesterday" : d + " days ago"; }
     return fmtDate(ms).split(",")[0];
   }
 
@@ -100,8 +100,162 @@
   modal.addEventListener("mousedown", (e) => { if (e.target === modal) closeModal(); });
 
   // ---------- state ----------
-  let S = { stats: null, status: null, users: [], requests: [] };
+  let S = { stats: null, status: null, users: [], requests: [], visits: null, messages: [] };
   let search = "";
+  let vPeriod = "days", vMetric = "visitors", msgFilter = "new", showAllVisitors = false;
+
+  // ---------- Visitors ----------
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const PAGE_NAMES = { "/login": "Sign-in page", "/signup": "Create account", "/": "Chat (signed in)", "/contact": "Contact page" };
+  const pageName = (p) => PAGE_NAMES[p] || p;
+  const DEVICE_NAMES = { mobile: "Phone", desktop: "Computer", tablet: "Tablet" };
+
+  function segmented(options, current, onPick) {
+    return el("div", { class: "seg", role: "group" }, options.map(([value, label]) =>
+      el("button", { type: "button", "aria-pressed": String(value === current), text: label, onclick: () => onPick(value) })));
+  }
+
+  function renderVisitors() {
+    const root = document.getElementById("view-visitors");
+    root.textContent = "";
+    const V = S.visits, st = S.status;
+    if (!V) { root.append(el("div", { class: "card empty", text: "Couldn't load the visitor numbers. Press Refresh." })); return; }
+    const t = V.totals;
+
+    if (st && !st.storage.persistent) {
+      root.append(el("div", { class: "alert alert-warn visit-note" },
+        el("strong", { text: "Counting since " + fmtDate(st.storage.startedAt) + ". " }),
+        "On Render's free plan the app forgets everything when it goes to sleep (after about 15 minutes with no visitors) or restarts, so these numbers start again from zero. Adding a disk keeps them (see the Health tab)."));
+    }
+
+    let trend = null, trendCls = "";
+    if (t.change7 != null) {
+      trend = (t.change7 > 0 ? "Up " : t.change7 < 0 ? "Down " : "Same as ") + (t.change7 === 0 ? "the 7 days before" : Math.abs(t.change7) + "% on the 7 days before");
+      trendCls = t.change7 > 0 ? "up" : t.change7 < 0 ? "down" : "";
+    }
+    const k7 = kpi(t.d7, "Visitors, last 7 days", trend || `${t.views7} pages viewed`);
+    if (trendCls) k7.querySelector(".sub").classList.add(trendCls);
+    root.append(el("div", { class: "kpis" },
+      kpi(t.today, "Visitors today", `${t.viewsToday} pages viewed. Yesterday: ${t.yesterday} visitors`),
+      k7,
+      kpi(t.d30, "Visitors, last 30 days", `${t.new30} new, ${t.returning30} came back on another day`),
+      kpi(t.signedIn30, "Signed-in visitors (30 days)", `${t.guests30} visitors who weren't signed in`),
+      kpi(t.all, "Visitors, all time", V.since ? `${t.viewsAll} pages viewed since ${fmtDate(V.since).split(",")[0]}` : "No visits yet")
+    ));
+
+    // visitors over time
+    const rows = V[vPeriod];
+    const labelOf = vPeriod === "months"
+      ? (d) => { const [y, m] = d.key.split("-"); return MONTHS[Number(m) - 1] + " " + y.slice(2); }
+      : vPeriod === "weeks" ? (d, short) => (short ? "" : "Week of ") + fmtDay(d.key) : (d) => fmtDay(d.key);
+    const every = vPeriod === "days" ? 5 : vPeriod === "weeks" ? 2 : 1;
+    const periodNote = { days: "Each day, last 30 days", weeks: "Each week (Monday to Sunday), last 12 weeks", months: "Each month, last 12 months" }[vPeriod];
+    root.append(el("div", { class: "card panel" },
+      el("div", { class: "panel-head" },
+        el("h3", { text: vMetric === "visitors" ? "Visitors over time" : "Pages viewed over time" }),
+        el("div", { class: "seg-group" },
+          segmented([["days", "Days"], ["weeks", "Weeks"], ["months", "Months"]], vPeriod, (v) => { vPeriod = v; renderVisitors(); }),
+          segmented([["visitors", "Visitors"], ["views", "Page views"]], vMetric, (v) => { vMetric = v; renderVisitors(); }))),
+      el("p", { class: "panel-note", text: periodNote + ". Each visitor counts once per " + vPeriod.slice(0, -1) + ". Signed-in people count once even on several devices; anyone else counts once per phone or computer." }),
+      barChart(rows, vMetric, vMetric === "visitors" ? "" : "brass", labelOf, every)));
+
+    const pageItems = V.pages30.map((x) => ({ name: pageName(x.page), count: x.visitors }));
+    const srcItems = V.sources30.map((x) => ({ name: x.source, count: x.count }));
+    const base = (st && st.appUrl) || location.origin;
+    root.append(el("div", { class: "grid-2" },
+      panel("Pages they open", "Visitors per page, last 30 days", hbars(pageItems, "name")),
+      panel("Where they came from", "Last 30 days. Direct means they typed the address, used a bookmark, or tapped a link in an app that doesn't say where it came from (WhatsApp usually doesn't).", hbars(srcItems, "name", "brass"),
+        el("p", { class: "tip" }, "Tip: add ", el("code", { text: "?ref=whatsapp" }), " (or linkedin, email, qr) to links you share, for example ",
+          el("code", { text: base + "/contact?ref=whatsapp" }), ", to see which ones bring people in."))
+    ));
+
+    root.append(el("div", { class: "grid-2" },
+      panel("Phone or computer", "Visitors, last 30 days",
+        el("div", { class: "devices" },
+          el("div", { class: "pill" }, el("b", { text: V.devices.mobile || 0 }), "on a phone"),
+          el("div", { class: "pill" }, el("b", { text: V.devices.desktop || 0 }), "on a computer"),
+          el("div", { class: "pill" }, el("b", { text: V.devices.tablet || 0 }), "on a tablet"))),
+      panel("Busiest hours", "Pages viewed by hour, South African time, last 30 days",
+        barChart(V.hours.map((n, h) => ({ h, n })), "n", "soft", (d) => String(d.h).padStart(2, "0") + ":00", 3))
+    ));
+
+    const shown = showAllVisitors ? V.recent : V.recent.slice(0, 20);
+    const more = V.recent.length > 20
+      ? el("button", { class: "btn btn-ghost btn-small show-more", type: "button", text: showAllVisitors ? "Show fewer" : `Show all ${V.recent.length}`, onclick: () => { showAllVisitors = !showAllVisitors; renderVisitors(); } })
+      : null;
+    const deviceText = (r) => (r.devices && r.devices.length > 1 ? r.devices : [r.device]).map((d) => DEVICE_NAMES[d] || d || "-").join(" and ");
+    root.append(panel("Who's been visiting", "Last 30 days, most recent first. Names show for people who were signed in; everyone else is a numbered guest.",
+      V.recent.length ? [el("div", { class: "table-wrap" }, el("table", { class: "visit-table" },
+        el("thead", null, el("tr", null, ["Visitor", "Last seen", "Days visited", "Pages viewed", "Last page", "Device", "Came from"].map((h) => el("th", { text: h })))),
+        el("tbody", null, shown.map((r) => el("tr", null,
+          el("td", { class: "cell-name" }, r.name ? [el("b", { text: r.name }), r.company ? el("span", { text: r.company }) : null] : el("span", { class: "guest", text: r.guest })),
+          el("td", { text: ago(r.lastSeen) }),
+          el("td", { text: r.days30 }),
+          el("td", { text: r.views30 }),
+          el("td", { text: pageName(r.lastPage) }),
+          el("td", { text: deviceText(r) }),
+          el("td", { text: r.source || "Direct" })))))), more]
+        : el("p", { class: "muted small", text: "No visitors yet. Share your link and they'll show up here." })));
+
+    root.append(el("div", { class: "foot-actions" },
+      el("a", { class: "btn btn-ghost btn-small", href: "/api/admin/export/visits.csv", text: "Download visits (CSV)" }),
+      el("span", { class: "muted small", text: "Your own visits are left out: this browser, any browser where you've opened this dashboard, and your own Site Desk account. Link previews and search-engine robots aren't counted." })));
+  }
+
+  // ---------- Messages ----------
+  async function messageAction(m, action) {
+    if (action === "delete" && !confirm(`Delete the message from ${m.name}? This can't be undone.`)) return;
+    const r = await post("/api/admin/message-action", { id: m.id, action });
+    if (!r.ok) { alert(r.data.error || "That didn't work. Please try again."); return; }
+    await loadAll(true);
+  }
+
+  function renderMessages() {
+    const root = document.getElementById("view-messages");
+    root.textContent = "";
+    const all = S.messages || [];
+    const fresh = all.filter((m) => m.status !== "answered");
+    const tab = document.getElementById("tab-messages");
+    tab.textContent = "Messages";
+    if (fresh.length) tab.append(el("span", { class: "count", text: fresh.length }));
+
+    const base = (S.status && S.status.appUrl) || location.origin;
+    root.append(el("div", { class: "toolbar" },
+      segmented([["new", `Waiting for a reply (${fresh.length})`], ["all", `All (${all.length})`]], msgFilter, (v) => { msgFilter = v; renderMessages(); }),
+      el("div", { class: "grow" }),
+      el("a", { class: "btn btn-ghost btn-small", href: "/contact", target: "_blank", rel: "noopener", text: "Open the contact page" }),
+      el("a", { class: "btn btn-ghost btn-small", href: "/api/admin/export/messages.csv", text: "Download messages (CSV)" })));
+
+    const list = msgFilter === "new" ? fresh : all;
+    if (!list.length) {
+      root.append(el("div", { class: "card empty" },
+        el("p", { text: all.length ? "No messages waiting for a reply." : "No messages yet." }),
+        el("p", { class: "small" }, "Anyone can write to you at ", el("code", { text: base + "/contact" }), ". It's also linked from the sign-in page and inside the app.")));
+      return;
+    }
+    list.forEach((m) => {
+      const d = m.delivery || {};
+      root.append(el("div", { class: "card msg-card" + (m.status === "answered" ? " answered" : "") },
+        el("header", null,
+          el("b", { text: m.name }),
+          el("span", { class: "badge", text: m.topic }),
+          el("span", { class: "badge " + (m.status === "answered" ? "ok" : "warn"), text: m.status === "answered" ? "Answered" : "New" }),
+          m.signedIn ? el("span", { class: "muted small", text: "Site Desk member" }) : null,
+          el("span", { class: "grow" }),
+          el("span", { class: "muted small", text: m.id + " - " + fmtDate(m.receivedAt) })),
+        el("dl", null,
+          m.email ? [el("dt", { text: "Email" }), el("dd", { text: m.email })] : null,
+          m.phone ? [el("dt", { text: "WhatsApp / phone" }), el("dd", { text: m.phone })] : null),
+        el("div", { class: "msg-text", text: m.message }),
+        el("div", { class: "meta" },
+          m.replyEmail ? el("a", { class: "btn btn-brass btn-small", href: m.replyEmail, text: "Reply by email" }) : null,
+          m.replyWhatsapp ? el("a", { class: "btn " + (m.replyEmail ? "btn-ghost" : "btn-brass") + " btn-small", href: m.replyWhatsapp, target: "_blank", rel: "noopener noreferrer", text: "Reply on WhatsApp" }) : null,
+          el("button", { class: "btn btn-ghost btn-small", type: "button", text: m.status === "answered" ? "Mark as not answered" : "Mark as answered", onclick: () => messageAction(m, m.status === "answered" ? "new" : "answered") }),
+          el("button", { class: "btn btn-ghost btn-small", type: "button", text: "Delete", onclick: () => messageAction(m, "delete") }),
+          el("span", { class: "grow" }),
+          el("span", { class: "muted small", text: "Email alert:" }), badge(d.email ? d.email.state : "off"))));
+    });
+  }
 
   // ---------- Overview ----------
   function renderOverview() {
@@ -286,6 +440,10 @@
         ? `Can't save to disk: ${st.error}`
         : st.persistent ? `Saved on disk. ${st.users} people and ${st.events} activity records so far.`
           : "Accounts are being saved to a temporary disk, and will be lost whenever Render restarts or the app goes to sleep. Add a persistent disk in Render (Starter plan, mount path /var/data) and the app will use it automatically."),
+      row(true, "Contact form", `Anyone can send you a message at ${(s.appUrl || location.origin)}/contact, without an account. ` +
+        (n.email.configured ? "Each one is emailed to you, and listed on the Messages tab." : "Messages are listed on the Messages tab, and people are asked to send them to you on WhatsApp or email too.") +
+        ` ${st.messages} so far.`),
+      row(true, "Visitor counting", `Every visit to the sign-in, contact and chat pages is counted, using one small anonymous cookie. ${st.visits} visits recorded. Robots, link previews and your own visits are left out.`),
       row(sec.signupCodeSet ? true : null, "Site access code", sec.signupCodeSet
         ? "Sign-up needs the site access code, so strangers can't use up your credit."
         : "Anyone with the link can sign up. Add SIGNUP_CODE (any word or number you choose) in your Render settings and give it to your team."),
@@ -302,26 +460,39 @@
     if (!s.storage.ok) add("alert-error", "Can't save data.", s.storage.error);
     else if (!s.storage.persistent) add("alert-warn", "Accounts are not safe yet.", "They'll be lost when Render restarts the app. Open the Health tab to see the one-minute fix.");
     if (s.assistant.lastError) add("alert-error", "The assistant is failing.", s.assistant.lastError.message);
-    if (!s.notifications.email.configured && !s.notifications.webhook.configured) add("alert-warn", "No automatic alerts yet.", "Requests are saved here, and people are asked to send them to you on WhatsApp or email. See the Health tab to add automatic email.");
+    if (!s.notifications.email.configured && !s.notifications.webhook.configured) add("alert-warn", "No automatic email alerts yet.", "Messages and live-session requests are saved here, and people are asked to send them to you on WhatsApp or email. See the Health tab to add automatic email.");
   }
 
   // ---------- load & tabs ----------
   async function loadAll(quiet) {
     try {
-      const [stats, status, users, requests] = await Promise.all([get("/api/admin/stats"), get("/api/admin/status"), get("/api/admin/users"), get("/api/admin/requests")]);
-      S = { stats, status, users: users.users, requests: requests.requests };
+      // The new tabs load on their own, so a problem there can't hide the rest.
+      const [stats, status, users, requests, visits, messages] = await Promise.all([
+        get("/api/admin/stats"), get("/api/admin/status"), get("/api/admin/users"), get("/api/admin/requests"),
+        get("/api/admin/visits").catch(() => null), get("/api/admin/messages").catch(() => null),
+      ]);
+      S = { stats, status, users: users.users, requests: requests.requests, visits, messages: messages ? messages.messages : [] };
       renderAlerts(); renderOverview(); renderPeople(); renderRequests(); renderHealth();
+      try { renderVisitors(); } catch (e) { console.error(e); }
+      try { renderMessages(); } catch (e) { console.error(e); }
     } catch (e) {
       if (!quiet) document.getElementById("alerts").append(el("div", { class: "alert alert-error", text: "Couldn't load the numbers. Refresh the page and sign in again." }));
     }
   }
 
+  const TABS = ["visitors", "overview", "people", "messages", "requests", "health"];
+  function showTab(name) {
+    if (!TABS.includes(name)) name = "visitors";
+    document.querySelectorAll("#tabs .tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
+    TABS.forEach((id) => (document.getElementById("view-" + id).hidden = id !== name));
+  }
   document.querySelectorAll("#tabs .tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      document.querySelectorAll("#tabs .tab").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
-      ["overview", "people", "requests", "health"].forEach((id) => (document.getElementById("view-" + id).hidden = id !== tab.dataset.tab));
+      showTab(tab.dataset.tab);
+      try { history.replaceState(null, "", "#" + tab.dataset.tab); } catch {}
     });
   });
+  showTab(location.hash.slice(1));
   document.getElementById("refresh").addEventListener("click", () => loadAll());
   loadAll();
   setInterval(() => loadAll(true), 60000);

@@ -14,9 +14,10 @@ const path = require("path");
 const cfg = require("./lib/config");
 const U = require("./lib/util");
 const { Store } = require("./lib/store");
-const { Auth, hashPassword, verifyPassword, burnTime, checkPassword } = require("./lib/auth");
+const { Auth, hashPassword, verifyPassword, burnTime, checkPassword, parseCookies } = require("./lib/auth");
 const notify = require("./lib/notify");
 const stats = require("./lib/stats");
+const visits = require("./lib/visits");
 const { TOPICS, classify, ROLES } = require("./lib/topics");
 
 const store = new Store(cfg.dataDir);
@@ -166,6 +167,52 @@ function requireUser(req, res) {
   const user = auth.currentUser(req);
   if (!user) { send(res, 401, { error: "Please sign in again." }); return null; }
   return user;
+}
+
+// The creator's own account (signed in with the Site Desk email or WhatsApp number).
+function isOwner(u) {
+  if (!u) return false;
+  return (cfg.agentEmail && u.loginKey === "e:" + cfg.agentEmail.toLowerCase()) ||
+    (cfg.agentWhatsapp && u.loginKey === "p:" + cfg.agentWhatsapp);
+}
+
+// ---------------------------------------------------------------------------
+// Visitor counting. One small anonymous cookie (sd_v) tells visits apart.
+// Never allowed to break a page: any problem is logged and ignored.
+// ---------------------------------------------------------------------------
+const VISITOR_COOKIE = "sd_v";
+const VID_RE = /^[a-f0-9]{24}$/;
+
+function addCookie(res, c) {
+  const prev = res.getHeader("Set-Cookie");
+  res.setHeader("Set-Cookie", prev ? [].concat(prev, c) : c);
+}
+
+// Returns the visitor id for this browser, giving it one if it has none.
+function visitorId(req, res) {
+  const existing = parseCookies(req)[VISITOR_COOKIE];
+  if (VID_RE.test(existing || "")) return { vid: existing, isNew: false };
+  const vid = U.newId("", 12);
+  const secure = req.headers["x-forwarded-proto"] === "https" || !!req.socket.encrypted;
+  addCookie(res, `${VISITOR_COOKIE}=${vid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${400 * 86400}${secure ? "; Secure" : ""}`);
+  return { vid, isNew: true };
+}
+
+function trackVisit(req, res, url, page, user) {
+  try {
+    if (req.method !== "GET") return;
+    if (/prefetch|prerender/i.test(String(req.headers["sec-purpose"] || req.headers.purpose || ""))) return;
+    if (visits.isBot(req.headers["user-agent"])) return;
+    const { vid, isNew } = visitorId(req, res);
+    const v = { t: Date.now(), v: vid, p: page, d: U.deviceFromUA(req.headers["user-agent"]) };
+    if (user) v.u = user.id;
+    const src = visits.sourceOf(req, url);
+    if (src) v.s = src;
+    if (isNew) v.n = 1;
+    store.addVisit(v);
+  } catch (e) {
+    console.error("Visit not counted:", e.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -432,6 +479,67 @@ async function handleSessionRequest(req, res) {
 }
 
 // ---------------------------------------------------------------------------
+// Contact form: anyone can send you a message, no account needed
+// ---------------------------------------------------------------------------
+const CONTACT_TOPICS = [
+  "Procore help or a live session",
+  "Construction or contracts query",
+  "Site Desk account or access",
+  "Business or project enquiry",
+  "Something else",
+];
+
+async function handleContact(req, res) {
+  if (!requirePost(req, res)) return;
+  const ip = U.clientIp(req);
+  if (blocked("contact:" + ip, 6, 3600e3) || blocked("contact:all", 120, 3600e3)) {
+    return send(res, 429, { error: "Too many messages have been sent from here just now. Please try again later, or use WhatsApp or email instead." });
+  }
+  const b = await jsonBody(req, res); if (!b) return;
+
+  // Bots: the hidden field gets filled in, or the form is sent impossibly fast.
+  // They get a normal-looking answer and nothing is saved or sent.
+  if (b.website || (typeof b.elapsed === "number" && b.elapsed < 2500)) {
+    return send(res, 200, { ok: true, id: "MSG-" + U.newId("", 3).toUpperCase(), notified: true, ...contactInfo(), whatsappUrl: "", emailUrl: "" });
+  }
+
+  const name = String(b.name || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const email = String(b.email || "").trim().slice(0, 160);
+  const phoneRaw = String(b.phone || "").trim().slice(0, 40);
+  const message = String(b.message || "").trim().slice(0, 4000);
+  const topic = CONTACT_TOPICS.includes(b.topic) ? b.topic : "Something else";
+
+  if (name.length < 2) return send(res, 400, { error: "Please enter your name." });
+  if (email && !U.EMAIL_RE.test(email)) return send(res, 400, { error: "That email address doesn't look right. Please check it." });
+  if (phoneRaw && !U.normalisePhone(phoneRaw)) return send(res, 400, { error: "That phone number doesn't look right. Please check it." });
+  if (!email && !phoneRaw) return send(res, 400, { error: `Please give an email address or a WhatsApp number so ${cfg.agent} can reply.` });
+  if (message.length < 5) return send(res, 400, { error: "Please write your message." });
+
+  hit("contact:" + ip, 3600e3); hit("contact:all", 3600e3);
+  const user = auth.currentUser(req);
+  const msg = {
+    id: "MSG-" + U.newId("", 3).toUpperCase(),
+    receivedAt: Date.now(),
+    name, email, phone: phoneRaw, topic, message,
+    status: "new",
+    ...(user ? { uid: user.id } : {}),
+  };
+  const { delivery, notified } = await notify.notifyContact(msg);
+  msg.delivery = delivery;
+  store.addMessage(msg);
+  console.log(`>>> Contact message ${msg.id} from ${msg.name} (notified: ${notified})`);
+
+  return send(res, 200, {
+    ok: true,
+    id: msg.id,
+    notified,
+    ...contactInfo(),
+    whatsappUrl: notify.contactWhatsappLink(msg),
+    emailUrl: notify.contactMailtoLink(msg),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Admin (password protected)
 // ---------------------------------------------------------------------------
 function adminOk(req, res) {
@@ -481,8 +589,38 @@ function adminStatus() {
     storage: {
       ok: store.ok, error: store.error, persistent: cfg.persistent, onRender: cfg.onRender,
       users: store.users.length, events: store.events.length,
+      visits: store.visits.length, messages: store.messages.length, startedAt: store.startedAt,
     },
+    newMessages: store.messages.filter((m) => m.status !== "answered").length,
   };
+}
+
+function ownerUids() { return store.users.filter(isOwner).map((u) => u.id); }
+
+function visitorStats() {
+  return visits.compute({ visits: store.visits, users: store.users, ownerVids: store.ownerVids, ownerUids: ownerUids() });
+}
+
+function adminMessages() {
+  return [...store.messages].reverse().slice(0, 300).map((m) => ({
+    id: m.id, receivedAt: m.receivedAt, name: m.name, email: m.email || "", phone: m.phone || "",
+    topic: m.topic, message: m.message, status: m.status === "answered" ? "answered" : "new",
+    answeredAt: m.answeredAt || null, signedIn: !!m.uid, delivery: m.delivery || {},
+    replyEmail: notify.messageReplyEmail(m), replyWhatsapp: notify.messageReplyWhatsapp(m),
+  }));
+}
+
+async function handleMessageAction(req, res) {
+  if (!requirePost(req, res)) return;
+  const b = await jsonBody(req, res); if (!b) return;
+  const m = store.findMessage(String(b.id || ""));
+  if (!m) return send(res, 404, { error: "That message no longer exists." });
+  switch (b.action) {
+    case "answered": m.status = "answered"; m.answeredAt = Date.now(); store.saveMessages(); return send(res, 200, { ok: true });
+    case "new": m.status = "new"; delete m.answeredAt; store.saveMessages(); return send(res, 200, { ok: true });
+    case "delete": store.deleteMessage(m.id); return send(res, 200, { ok: true });
+    default: return send(res, 400, { error: "Unknown action." });
+  }
 }
 
 function adminUsers() {
@@ -539,7 +677,11 @@ async function handleAdmin(req, res, url) {
   if (!adminOk(req, res)) return;
   const p = url.pathname;
 
-  if (req.method === "GET" && (p === "/admin" || p === "/admin/")) return sendFile(res, path.join(ADMIN_DIR, "index.html"), HTML_HEADERS["Content-Type"], HTML_HEADERS);
+  if (req.method === "GET" && (p === "/admin" || p === "/admin/")) {
+    // Remember this browser as yours, so your own visits aren't counted.
+    try { store.addOwnerVid(visitorId(req, res).vid); } catch (e) { console.error("Owner browser not saved:", e.message); }
+    return sendFile(res, path.join(ADMIN_DIR, "index.html"), HTML_HEADERS["Content-Type"], HTML_HEADERS);
+  }
   if (req.method === "GET" && p === "/admin/admin.js") return sendFile(res, path.join(ADMIN_DIR, "admin.js"), "text/javascript; charset=utf-8", { "Cache-Control": "no-store" });
 
   if (req.method === "GET" && p === "/api/admin/status") return send(res, 200, adminStatus());
@@ -549,6 +691,24 @@ async function handleAdmin(req, res, url) {
     return send(res, 200, {
       requests: [...store.requests].reverse().slice(0, 200).map((r) => ({ ...r, replyWhatsapp: notify.replyWhatsapp(r) })),
     });
+  }
+
+  if (req.method === "GET" && p === "/api/admin/visits") return send(res, 200, visitorStats());
+  if (req.method === "GET" && p === "/api/admin/messages") return send(res, 200, { messages: adminMessages() });
+  if (req.method === "POST" && p === "/api/admin/message-action") return handleMessageAction(req, res);
+  if (req.method === "GET" && p === "/api/admin/export/visits.csv") {
+    const names = new Map(store.users.map((u) => [u.id, u.name]));
+    const mine = new Set(store.ownerVids), mineU = new Set(ownerUids());
+    const rows = [["Time", "Visitor", "Person", "Page", "Device", "Came from", "First visit", "Yours"]];
+    for (const v of store.visits) {
+      rows.push([U.formatSAST(v.t), v.v.slice(0, 8), names.get(v.u) || "", v.p, v.d || "", v.s === "=" ? "(within the site)" : v.s || "(direct)", v.n ? "yes" : "", mine.has(v.v) || mineU.has(v.u) ? "yes" : ""]);
+    }
+    return csv(res, "site-desk-visits.csv", rows);
+  }
+  if (req.method === "GET" && p === "/api/admin/export/messages.csv") {
+    const rows = [["Received", "Reference", "Name", "Email", "Phone", "About", "Message", "Status"]];
+    for (const m of store.messages) rows.push([U.formatSAST(m.receivedAt), m.id, m.name, m.email || "", m.phone || "", m.topic, m.message, m.status === "answered" ? "Answered" : "New"]);
+    return csv(res, "site-desk-messages.csv", rows);
   }
 
   if (req.method === "POST" && p === "/api/admin/user-action") return handleAdminAction(req, res);
@@ -627,18 +787,31 @@ async function route(req, res) {
 
   // pages
   if (m === "GET" && p === "/") {
-    if (!auth.currentUser(req)) return redirect(res, "/login");
+    const user = auth.currentUser(req);
+    if (!user) return redirect(res, "/login" + url.search); // keep ?ref= so the source is counted
+    trackVisit(req, res, url, "/", user);
     return sendFile(res, path.join(VIEWS, "app.html"), HTML_HEADERS["Content-Type"], HTML_HEADERS);
   }
   if (m === "GET" && (p === "/login" || p === "/signup")) {
     if (auth.currentUser(req)) return redirect(res, "/");
+    trackVisit(req, res, url, p, null);
     return sendFile(res, path.join(VIEWS, "login.html"), HTML_HEADERS["Content-Type"], HTML_HEADERS);
   }
-
-  // public info for the sign-in page
-  if (m === "GET" && p === "/api/public") {
-    return send(res, 200, { agent: cfg.agent, signupCodeRequired: !!cfg.signupCode, roles: ROLES });
+  if (m === "GET" && (p === "/contact" || p === "/contact/")) {
+    trackVisit(req, res, url, "/contact", auth.currentUser(req));
+    return sendFile(res, path.join(VIEWS, "contact.html"), HTML_HEADERS["Content-Type"], HTML_HEADERS);
   }
+
+  // public info for the sign-in and contact pages
+  if (m === "GET" && p === "/api/public") {
+    const user = auth.currentUser(req);
+    return send(res, 200, {
+      agent: cfg.agent, signupCodeRequired: !!cfg.signupCode, roles: ROLES,
+      ...contactInfo(), contactTopics: CONTACT_TOPICS,
+      me: user ? { name: user.name, email: user.loginType === "email" ? user.loginDisplay : "", phone: user.loginType === "phone" ? user.loginDisplay : "" } : null,
+    });
+  }
+  if (m === "POST" && p === "/api/contact") return handleContact(req, res);
 
   // account
   if (m === "POST" && p === "/api/signup") return handleSignup(req, res);
@@ -653,6 +826,7 @@ async function route(req, res) {
       ...contactInfo(),
       whatsappUrl: cfg.agentWhatsapp ? "https://wa.me/" + cfg.agentWhatsapp : "",
       topics: TOPICS,
+      isOwner: !!isOwner(user),
     });
   }
 

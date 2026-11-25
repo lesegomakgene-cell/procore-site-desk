@@ -102,3 +102,66 @@ test("statistics count the right people on the right days (South African time)",
   assert.equal(s.days.at(-1).questions, 2);
   assert.equal(s.hours[12], 2);           // 10:00 UTC is noon in South Africa
 });
+
+test("visitors are counted by South African day, Monday-to-Sunday week and month", () => {
+  const V = require("../lib/visits");
+  // Wed 25 Nov 2026, 12:00 SAST
+  const now = Date.UTC(2026, 10, 25, 10, 0, 0);
+  const H = 3600e3, D = 24 * H;
+  const vid = (c) => c.repeat(24);
+  const visits = [
+    { t: now - H, v: vid("a"), p: "/login", d: "mobile", s: "WhatsApp", n: 1 },
+    { t: now - H + 60e3, v: vid("a"), p: "/", d: "mobile", u: "u1", s: "=" },
+    { t: now - 2 * H, v: vid("b"), p: "/contact", d: "desktop", s: "" },
+    { t: now - 13 * H, v: vid("c"), p: "/login", d: "mobile" },            // 23:00 the night before: yesterday in SA
+    { t: now - 3 * D, v: vid("a"), p: "/login", d: "mobile" },             // Sunday 22 Nov: last week
+    { t: now - 9 * D, v: vid("d"), p: "/login", d: "tablet", s: "LinkedIn" }, // previous 7 days
+    { t: now - 40 * D, v: vid("e"), p: "/login", d: "desktop" },           // October
+    { t: now - H, v: vid("f"), p: "/login", d: "desktop" },                // the creator's browser
+    { t: now - H, v: vid("g"), p: "/", d: "desktop", u: "owner" },         // the creator signed in
+  ];
+  const users = [{ id: "u1", name: "Sipho", company: "Acme" }, { id: "owner", name: "Lesego" }];
+  const s = V.compute({ visits, users, ownerVids: [vid("f")], ownerUids: ["owner"] }, now);
+  const t = s.totals;
+  assert.equal(t.today, 2);          // a and b
+  assert.equal(t.viewsToday, 3);
+  assert.equal(t.yesterday, 1);      // c
+  assert.equal(t.d7, 3);             // a, b, c
+  assert.equal(t.prev7, 1);          // d
+  assert.equal(t.change7, 200);
+  assert.equal(t.d30, 4);
+  assert.equal(t.all, 5);
+  assert.equal(t.signedIn30, 1);
+  assert.equal(t.returning30, 1);    // a came on two different days
+  assert.equal(s.weeks.at(-1).key, "2026-11-23"); // Monday
+  assert.equal(s.weeks.at(-1).visitors, 3);       // a, b, c (Mon 23 to today)
+  assert.equal(s.weeks.at(-2).visitors, 2);       // a on Sunday 22nd, d on Monday 16th
+  assert.equal(s.months.at(-1).key, "2026-11");
+  assert.equal(s.months.at(-1).visitors, 4);
+  assert.equal(s.months.at(-2).visitors, 1);      // e in October
+  assert.equal(s.days.at(-1).views, 3);
+  assert.equal(s.hours[11], 2);                   // 11:00 SAST
+  const src = Object.fromEntries(s.sources30.map((x) => [x.source, x.count]));
+  assert.equal(src.WhatsApp, 1);
+  assert.equal(src.LinkedIn, 1);
+  assert.equal(src.Direct, 2); // b and c
+  assert.equal(s.recent[0].name, "Sipho");
+  assert.equal(s.recent[0].company, "Acme");
+  assert.ok(!JSON.stringify(s).includes("Lesego"));
+  assert.ok(s.recent.some((r) => r.guest === "Guest BBBB"));
+});
+
+test("robots are recognised, and links say where people came from", () => {
+  const V = require("../lib/visits");
+  assert.equal(V.isBot("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile Safari/604.1"), false);
+  for (const ua of ["WhatsApp/2.23", "Mozilla/5.0 (compatible; Googlebot/2.1)", "curl/8.4", "", "python-requests/2.31"]) assert.equal(V.isBot(ua), true, ua);
+  const req = (ref) => ({ headers: { host: "sd.example", referer: ref } });
+  const u = (q = "") => new URL("http://sd.example/login" + q);
+  assert.equal(V.sourceOf(req(), u("?ref=whatsapp")), "WhatsApp");
+  assert.equal(V.sourceOf(req(), u("?utm_source=Site-Poster")), "Site-poster");
+  assert.equal(V.sourceOf(req("https://www.google.co.za/"), u()), "Google");
+  assert.equal(V.sourceOf(req("https://lnkd.in/abc"), u()), "LinkedIn");
+  assert.equal(V.sourceOf(req("http://sd.example/contact"), u()), "=");
+  assert.equal(V.sourceOf(req("https://www.someblog.co.za/post"), u()), "someblog.co.za");
+  assert.equal(V.sourceOf(req(), u()), "");
+});
