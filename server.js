@@ -50,6 +50,7 @@ How to answer:
 
 When to suggest a live session:
 - If a question is project-specific (this project's workflows, permissions, custom fields, naming conventions, contractual process), needs human judgement, involves a dispute, or the person is still stuck after your guidance, suggest a live session with ${cfg.agent}. Do this naturally, not on every message. When you do, end your reply with the exact marker ${SESSION_MARK} on its own final line. The app turns the marker into a "Request a live session" button, so never mention the marker itself.
+- If someone asks how to reach ${cfg.agent} directly, they can ${cfg.agentWhatsapp ? "WhatsApp " + U.displayPhone(cfg.agentWhatsapp) : "use the live session button"}${cfg.agentEmail ? " or email " + cfg.agentEmail : ""}.
 
 Tone: warm, knowledgeable and plain-spoken, like a helpful colleague who has used Procore for years. Sentence case, no emoji, no jargon for its own sake. You are an unofficial helper set up by the site team - you are not Procore and not affiliated with Procore.`;
 
@@ -143,6 +144,16 @@ setInterval(() => {
   const now = Date.now();
   for (const [k, a] of hits) if (!a.length || now - a[a.length - 1] > 3600e3) hits.delete(k);
 }, 600e3).unref();
+
+// How people can reach you directly (shown in the app and after every request).
+function contactInfo() {
+  return {
+    agent: cfg.agent,
+    agentEmail: cfg.agentEmail,
+    agentWhatsapp: U.displayPhone(cfg.agentWhatsapp),
+    agentWhatsappUrl: cfg.agentWhatsapp ? "https://wa.me/" + cfg.agentWhatsapp : "",
+  };
+}
 
 function publicUser(u) {
   return {
@@ -408,13 +419,15 @@ async function handleSessionRequest(req, res) {
   store.addEvent({ type: "session_request", uid: user.id, rid: record.id, notified });
   console.log(`>>> Live session request ${record.id} from ${record.name} (notified: ${notified})`);
 
+  // The direct links are always sent: if no alert went out, they are how the
+  // request reaches you; if one did, they let the person follow up straight away.
   return send(res, 200, {
     ok: true,
     id: record.id,
     notified,
-    agent: cfg.agent,
-    agentEmail: cfg.agentEmail,
-    whatsappUrl: notified ? "" : notify.fallbackWhatsapp(record),
+    ...contactInfo(),
+    whatsappUrl: notify.fallbackWhatsapp(record),
+    emailUrl: notify.mailtoLink(record),
   });
 }
 
@@ -459,6 +472,7 @@ function adminStatus() {
       webhook: { configured: !!cfg.webhookUrl },
       whatsapp: { configured: !!cfg.agentWhatsapp },
     },
+    contact: { email: cfg.agentEmail, whatsapp: U.displayPhone(cfg.agentWhatsapp) },
     security: {
       signupCodeSet: !!cfg.signupCode,
       storeQuestions: cfg.storeQuestions,
@@ -636,8 +650,7 @@ async function route(req, res) {
     const user = requireUser(req, res); if (!user) return;
     return send(res, 200, {
       user: publicUser(user),
-      agent: cfg.agent,
-      agentEmail: cfg.agentEmail,
+      ...contactInfo(),
       whatsappUrl: cfg.agentWhatsapp ? "https://wa.me/" + cfg.agentWhatsapp : "",
       topics: TOPICS,
     });

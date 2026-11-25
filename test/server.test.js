@@ -177,8 +177,13 @@ test("a live-session request reaches you by email and webhook", async () => {
   const r = await c.post("/api/request-session", { contact: "0821112222", topic: "RFIs", preferredTime: "Tomorrow, morning", urgency: "Urgent", details: "Stuck on routing" });
   assert.equal(r.status, 200);
   assert.equal(r.data.notified, true);
-  assert.equal(r.data.whatsappUrl, ""); // no fallback needed
   assert.match(r.data.id, /^SD-[0-9A-F]{6}$/);
+  // direct follow-up links are always offered, with the request written out
+  assert.match(r.data.whatsappUrl, /^https:\/\/wa\.me\/27821234567\?text=/);
+  assert.match(decodeURIComponent(r.data.whatsappUrl), new RegExp(r.data.id));
+  assert.match(decodeURIComponent(r.data.whatsappUrl), /Stuck on routing/);
+  assert.match(r.data.emailUrl, /^mailto:lesego@example\.com\?subject=/);
+  assert.equal(r.data.agentWhatsapp, "082 123 4567");
 
   const mail = mocks.seen.email.at(-1);
   assert.equal(mail.auth, "Bearer resend-key");
@@ -207,7 +212,26 @@ test("when no alert can be delivered the person is told, with a WhatsApp fallbac
   assert.equal(r.status, 200);
   assert.equal(r.data.notified, false);
   assert.match(r.data.whatsappUrl, /^https:\/\/wa\.me\/27821234567\?text=/);
+  assert.match(r.data.emailUrl, /^mailto:lesego@example\.com/);
   assert.equal(r.data.agentEmail, "lesego@example.com");
+});
+
+test("with no email set up at all, requests still reach you through the BSKM email and WhatsApp", async () => {
+  const a = await startApp({ SITE_AGENT_EMAIL: "", SITE_AGENT_WHATSAPP: "", ANTHROPIC_API_URL: mocks.anthropicUrl });
+  const c = client(a.base);
+  await c.post("/api/signup", good({ login: "plain@example.com" }));
+  const me = await c.get("/api/me");
+  assert.equal(me.data.agentEmail, "bskm.projects@outlook.com");
+  assert.equal(me.data.agentWhatsapp, "079 171 8085");
+  assert.equal(me.data.whatsappUrl, "https://wa.me/27791718085");
+  const r = await c.post("/api/request-session", { contact: "0821112222", topic: "RFIs", details: "Need help" });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.notified, false); // no Resend key here
+  assert.match(r.data.whatsappUrl, /^https:\/\/wa\.me\/27791718085\?text=/);
+  assert.match(r.data.emailUrl, /^mailto:bskm\.projects@outlook\.com\?subject=Procore%20live%20session%20request%20SD-/);
+  const st = await client(a.base).get("/api/admin/status", { admin: "adminpw" });
+  assert.deepEqual(st.data.contact, { email: "bskm.projects@outlook.com", whatsapp: "079 171 8085" });
+  await a.stop();
 });
 
 // ---------------------------------------------------------------- account

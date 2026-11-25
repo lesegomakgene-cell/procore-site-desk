@@ -32,9 +32,9 @@ services:
       - key: NOTIFY_EMAIL
         sync: false          # the SAME email you signed up to Resend with
       - key: SITE_AGENT_WHATSAPP
-        sync: false          # e.g. 0821234567 - lets people message you if an alert fails
+        value: "0791718085"  # BSKM WhatsApp Business - people send live-session requests here
       - key: SITE_AGENT_EMAIL
-        sync: false          # optional - shown to people as another way to reach you
+        value: bskm.projects@outlook.com   # shown to people, and where email requests go
       - key: REQUEST_WEBHOOK_URL
         sync: false          # optional - a Slack/Discord webhook for instant chat alerts
 

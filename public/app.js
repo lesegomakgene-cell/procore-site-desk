@@ -5,6 +5,7 @@
   let me = null;            // the signed-in person
   let agent = "the site agent";
   let agentEmail = "";
+  let agentWhatsapp = "";   // shown as "079 171 8085"
   let whatsappUrl = "";
   let topics = [];
   let busy = false;
@@ -301,8 +302,27 @@
   function actionLink(text, href, cls) {
     const a = document.createElement("a");
     a.className = "btn " + cls; a.textContent = text; a.href = href;
-    a.target = "_blank"; a.rel = "noopener noreferrer";
+    if (!href.startsWith("mailto:")) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
     return a;
+  }
+
+  function plainLink(text, href) {
+    const a = document.createElement("a");
+    a.textContent = text; a.href = href;
+    if (!href.startsWith("mailto:")) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+    return a;
+  }
+
+  // "WhatsApp 079 171 8085 or email bskm.projects@outlook.com", as real links.
+  function fillDirect(el, lead) {
+    el.textContent = "";
+    if (!agentWhatsapp && !agentEmail) { el.hidden = true; return; }
+    el.append(lead + " ");
+    if (agentWhatsapp) el.append("WhatsApp ", plainLink(agentWhatsapp, whatsappUrl));
+    if (agentWhatsapp && agentEmail) el.append(" or ");
+    if (agentEmail) el.append("email ", plainLink(agentEmail, "mailto:" + agentEmail));
+    el.append(".");
+    el.hidden = false;
   }
 
   $("bookForm").addEventListener("submit", async (e) => {
@@ -336,21 +356,26 @@
     const note = $("doneNote"), actions = $("doneActions");
     actions.textContent = "";
     $("doneSub").textContent = "Reference " + d.id;
+    const hasDirect = !!(d.whatsappUrl || d.emailUrl);
     if (d.notified) {
       $("doneTitle").textContent = "Request sent";
       note.className = "alert alert-ok";
-      note.textContent = "Thank you, " + me.firstName + ". " + agent + " has been told and will contact you on " + contact + " to set up a time.";
+      note.textContent = "Thank you, " + me.firstName + ". " + agent + " has your request and will contact you on " + contact + " to set up a time." +
+        (hasDirect ? " Need it sooner? Send it on WhatsApp or by email too. Your message is already written." : "");
     } else {
-      $("doneTitle").textContent = "Request saved";
-      note.className = "alert alert-warn";
-      note.textContent = "Your request is saved, but " + agent + " couldn't be alerted automatically. To make sure it isn't missed, please message " + agent + " directly" + (d.whatsappUrl || d.agentEmail ? " using the button below." : " or tell the site office.") + " Quote reference " + d.id + ".";
-      if (d.whatsappUrl) actions.appendChild(actionLink("Message on WhatsApp", d.whatsappUrl, "btn-brass"));
-      if (d.agentEmail) actions.appendChild(actionLink("Send an email", "mailto:" + d.agentEmail + "?subject=" + encodeURIComponent("Procore live session request " + d.id), "btn-ghost"));
+      $("doneTitle").textContent = hasDirect ? "One last step" : "Request saved";
+      note.className = "alert alert-info";
+      note.textContent = hasDirect
+        ? "Your request is saved (reference " + d.id + "). Tap WhatsApp or Email below to send it to " + agent + ". Your message is already written, so you only need to press send."
+        : "Your request is saved (reference " + d.id + "). Please tell the site office so " + agent + " doesn't miss it.";
     }
+    if (d.whatsappUrl) actions.appendChild(actionLink("Send on WhatsApp", d.whatsappUrl, "btn-brass"));
+    if (d.emailUrl) actions.appendChild(actionLink("Send by email", d.emailUrl, d.whatsappUrl ? "btn-ghost" : "btn-brass"));
     const close = document.createElement("button");
-    close.type = "button"; close.className = "btn btn-primary"; close.textContent = "Done";
+    close.type = "button"; close.className = "btn " + (d.notified || !hasDirect ? "btn-primary" : "btn-ghost"); close.textContent = "Done";
     close.onclick = () => closeOverlay($("bookOverlay"));
     actions.appendChild(close);
+    fillDirect($("doneContacts"), "You can also reach " + agent + " on");
   }
 
   $("bookCancel").onclick = () => closeOverlay($("bookOverlay"));
@@ -411,11 +436,14 @@
     try { r = await api("/api/me"); } catch { return; }
     if (!r.ok) { location.href = "/login"; return; }
     me = r.data.user;
-    agent = r.data.agent; agentEmail = r.data.agentEmail; whatsappUrl = r.data.whatsappUrl;
+    agent = r.data.agent; agentEmail = r.data.agentEmail || ""; whatsappUrl = r.data.whatsappUrl || "";
+    agentWhatsapp = whatsappUrl ? r.data.agentWhatsapp || "" : "";
     topics = r.data.topics || [];
     storeKey = "sd_chat_" + me.id;
 
     document.querySelectorAll(".agent-name").forEach((e) => (e.textContent = agent));
+    fillDirect($("welcomeDirect"), "Or reach " + agent + " directly:");
+    fillDirect($("bookDirect"), "Prefer to reach " + agent + " directly?");
     $("initial").textContent = (me.firstName[0] || "?").toUpperCase();
     $("greeting").textContent = greeting();
 
