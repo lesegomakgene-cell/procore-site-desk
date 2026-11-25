@@ -442,6 +442,7 @@
     storeKey = "sd_chat_" + me.id;
 
     document.querySelectorAll(".agent-name").forEach((e) => (e.textContent = agent));
+    if (r.data.isOwner) { $("dashBtn").hidden = false; $("ownerLink").hidden = false; }
     fillDirect($("welcomeDirect"), "Or reach " + agent + " directly:");
     fillDirect($("bookDirect"), "Prefer to reach " + agent + " directly?");
     $("initial").textContent = (me.firstName[0] || "?").toUpperCase();

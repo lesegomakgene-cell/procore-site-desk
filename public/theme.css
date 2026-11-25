@@ -203,6 +203,36 @@ svg.chart text { font: 11px var(--sans); fill: var(--muted); }
 .center-note { text-align: center; margin-top: 14px; }
 .foot { text-align: center; margin-top: 18px; }
 
+.contact-link { text-align: center; margin-top: 18px; font-size: 14.5px; }
+.contact-link a { font-weight: 600; }
+
+/* ---------- contact page ---------- */
+.contact-main { max-width: 600px; }
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.quick.single { grid-template-columns: 1fr; }
+@media (max-width: 520px) { .quick { grid-template-columns: 1fr; } }
+.quick-card {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  text-decoration: none; color: var(--ink); box-shadow: var(--shadow);
+  transition: border-color .12s;
+}
+.quick-card:hover { border-color: var(--brass); }
+.quick-icon { width: 40px; height: 40px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.quick-icon.wa { background: var(--ok-soft); color: var(--ok); }
+.quick-icon.mail { background: var(--navy-soft); color: var(--navy); }
+.quick-text { min-width: 0; display: flex; flex-direction: column; }
+.quick-text b { font: 700 16px var(--serif); color: var(--navy); }
+.quick-text span { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-card { padding: 20px 22px 24px; }
+.contact-card h3 { font-size: 22px; margin-bottom: 14px; color: var(--navy); }
+.form-hint { font-size: 12.5px; color: var(--muted); margin: -6px 0 14px; }
+.privacy { margin: 0 0 14px; }
+#contactDone .alert { margin: 12px 0 14px; }
+#contactDone .done-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+#contactDone .done-actions .btn { flex: 1 1 180px; }
+.another { display: block; margin: 16px auto 0; font-size: 14px; }
+
 /* ---------- refinements ---------- */
 .field label.check { font-weight: 400; font-size: 14px; color: var(--ink); margin-bottom: 0; line-height: 1.5; }
 .grid-2 { align-items: start; }

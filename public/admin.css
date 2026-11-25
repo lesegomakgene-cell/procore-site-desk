@@ -26,3 +26,34 @@
 .devices { display: flex; gap: 10px; flex-wrap: wrap; }
 .devices .pill { padding: 10px 16px; background: var(--paper-2); border-radius: 10px; }
 .devices .pill b { font: 700 22px var(--serif); display: block; color: var(--navy); }
+
+/* visitors */
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.panel-head h3 { margin: 0; }
+.seg-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-flex; padding: 3px; background: var(--paper-2); border-radius: 999px; }
+.seg button { min-height: 30px; padding: 0 12px; border: 0; background: none; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.kpi .sub.up { color: var(--ok); }
+.kpi .sub.down { color: var(--danger); }
+.tip { font-size: 13px; color: var(--muted); margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.tip code { background: var(--paper-2); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; overflow-wrap: anywhere; }
+.guest { color: var(--muted); font-style: italic; }
+.foot-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+
+/* messages */
+.msg-card { padding: 16px 18px; margin-bottom: 12px; }
+.msg-card.answered { opacity: .78; }
+.msg-card header { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.msg-card header b { font: 700 18px var(--serif); }
+.msg-card dl { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; margin: 0 0 10px; font-size: 14.5px; }
+.msg-card dt { color: var(--muted); }
+.msg-card dd { margin: 0; overflow-wrap: anywhere; }
+.msg-text { white-space: pre-wrap; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; }
+.msg-card .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tab .count { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--brass); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+@media (max-width: 560px) { .msg-card dl, .req dl { grid-template-columns: 1fr; gap: 0 0; } .msg-card dt, .req dt { margin-top: 6px; } }
+.show-more { margin-top: 12px; }
+.visit-table { min-width: 720px; }
+.visit-table td { white-space: nowrap; }
+.visit-table td.cell-name { white-space: normal; min-width: 150px; }
