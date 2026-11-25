@@ -278,10 +278,10 @@
         : "No API key yet. Add ANTHROPIC_API_KEY in your Render settings.", el("div", null, testAssistant, assistantOut)),
       row(anyNotify, "Live-session alerts to you", anyNotify
         ? [n.email.configured ? `Email goes to ${n.email.to}. ` : "", n.webhook.configured ? "A chat webhook is set. " : ""].join("")
-        : "Nobody will be alerted automatically. Add RESEND_API_KEY and NOTIFY_EMAIL (free at resend.com) in your Render settings. Use the same email you signed up to Resend with.", el("div", null, testNotify, notifyOut)),
-      row(n.whatsapp.configured ? true : null, "WhatsApp fallback", n.whatsapp.configured
-        ? "If an alert can't be delivered, the person sees a button to message you on WhatsApp."
-        : "Optional. Add SITE_AGENT_WHATSAPP (for example 0821234567) so people can message you if an alert fails."),
+        : "No automatic email yet, so people are asked to send their request to you on WhatsApp or email themselves. For an automatic email as well, add RESEND_API_KEY (free at resend.com) in Render. Sign up to Resend with the email you want alerts in, because Resend's free setup only sends to that address.", el("div", null, testNotify, notifyOut)),
+      row(n.whatsapp.configured || !!s.contact.email ? true : null, "Where people can reach you directly",
+        [s.contact.whatsapp ? `WhatsApp ${s.contact.whatsapp}` : "", s.contact.email ? `email ${s.contact.email}` : ""].filter(Boolean).join(" and ") +
+        ". After every live-session request, people get one-tap buttons to send it to you here, with their message already written. To change these, set SITE_AGENT_WHATSAPP or SITE_AGENT_EMAIL in Render."),
       row(st.ok && st.persistent, "Saved accounts and statistics", !st.ok
         ? `Can't save to disk: ${st.error}`
         : st.persistent ? `Saved on disk. ${st.users} people and ${st.events} activity records so far.`
@@ -302,7 +302,7 @@
     if (!s.storage.ok) add("alert-error", "Can't save data.", s.storage.error);
     else if (!s.storage.persistent) add("alert-warn", "Accounts are not safe yet.", "They'll be lost when Render restarts the app. Open the Health tab to see the one-minute fix.");
     if (s.assistant.lastError) add("alert-error", "The assistant is failing.", s.assistant.lastError.message);
-    if (!s.notifications.email.configured && !s.notifications.webhook.configured) add("alert-warn", "No live-session alerts set up.", "Requests are saved here but you won't be told. See the Health tab.");
+    if (!s.notifications.email.configured && !s.notifications.webhook.configured) add("alert-warn", "No automatic alerts yet.", "Requests are saved here, and people are asked to send them to you on WhatsApp or email. See the Health tab to add automatic email.");
   }
 
   // ---------- load & tabs ----------

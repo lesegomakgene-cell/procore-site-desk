@@ -85,5 +85,12 @@
 .acc-section summary { cursor: pointer; font-weight: 600; padding: 12px 0; list-style-position: inside; }
 .acc-section form { padding: 4px 0 14px; }
 .acc-warn { margin-bottom: 12px; }
-.done-actions .btn { flex: 1; }
+.done-actions { flex-wrap: wrap; }
+.done-actions .btn { flex: 1 1 150px; }
+.direct { margin-top: 14px; text-align: center; line-height: 1.7; }
+.direct a { font-weight: 600; white-space: nowrap; }
+.welcome .direct { margin-top: 12px; }
+.done-contacts { margin-top: 12px; font-size: 14px; color: var(--muted); text-align: center; }
+.done-contacts a { font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) { .done-actions { flex-direction: column; } .done-actions .btn { flex: none; width: 100%; } }
 .fb .tool { margin-left: 6px; }
